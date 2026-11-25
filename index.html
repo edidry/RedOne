@@ -1,0 +1,2350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RedOne v3.2 - Sistema Integral de Taller, Dashboard Ejecutivo, QR, Cortes y Configuración</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body id="app-body" class="bg-slate-950 text-slate-100 min-h-screen font-sans transition-colors duration-300">
+
+  <!-- ===================================================================== -->
+  <!-- MODAL DE SEGURIDAD / PIN (MAESTRO Y POR TIENDA INDEPENDIENTE)         -->
+  <!-- ===================================================================== -->
+  <div id="modal-pin" class="hidden fixed inset-0 bg-slate-950/95 backdrop-blur-md z-[60] flex items-center justify-center p-4 no-print">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-6 space-y-5 shadow-2xl">
+      <div class="text-center space-y-2">
+        <div id="pin-icono-box" class="w-14 h-14 rounded-2xl bg-red-600/20 border border-red-500/40 text-red-400 flex items-center justify-center mx-auto text-2xl shadow-lg">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <h3 id="pin-titulo" class="text-lg font-bold text-white">Acceso a Vista Técnico</h3>
+        <p id="pin-subtitulo" class="text-xs text-slate-400">Ingresa el PIN maestro para desbloquear el Dashboard y control de taller.</p>
+      </div>
+
+      <div id="pin-selector-tienda-wrap" class="hidden space-y-1.5">
+        <label class="block text-xs font-semibold text-slate-300">Selecciona tu Sucursal:</label>
+        <select id="pin-select-tienda" onchange="actualizarSubtituloPinTienda()"
+          class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500">
+        </select>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <input type="password" id="input-pin-acceso" inputmode="numeric" maxlength="8" placeholder="••••"
+            onkeydown="if(event.key==='Enter'){ event.preventDefault(); confirmarPinAcceso(); }"
+            class="w-full bg-slate-950 border-2 border-slate-700 focus:border-red-500 rounded-xl px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] text-white focus:outline-none">
+          <p id="pin-error-msg" class="hidden text-xs text-rose-400 text-center mt-2 font-semibold">
+            <i class="fa-solid fa-circle-exclamation mr-1"></i> PIN incorrecto. Intenta de nuevo.
+          </p>
+        </div>
+
+        <label id="wrap-recordar-pin" class="flex items-center justify-center gap-2 text-xs text-slate-300 cursor-pointer bg-slate-950/80 border border-slate-800 rounded-xl py-2.5 px-3 hover:border-slate-700 transition">
+          <input type="checkbox" id="chk-recordar-pin-24h" checked class="accent-red-500 w-4 h-4">
+          <span>No volver a pedir el PIN durante <strong>1 día (24 horas)</strong></span>
+        </label>
+      </div>
+
+      <div class="grid grid-cols-1 gap-2">
+        <button type="button" onclick="confirmarPinAcceso()" id="btn-confirmar-pin"
+          class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl text-sm shadow-lg shadow-red-600/25 transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-unlock"></i> Desbloquear Acceso
+        </button>
+
+        <div id="pin-acciones-secundarias" class="grid grid-cols-2 gap-2 pt-1">
+          <button type="button" id="btn-pin-ir-tienda" onclick="entrarModoTiendaDesdeLogin()"
+            class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2.5 px-3 rounded-xl text-xs border border-slate-700 transition flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-store text-sky-400"></i> Soy Tienda
+          </button>
+          <button type="button" id="btn-pin-cancelar" onclick="cerrarModalPin()"
+            class="bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white font-semibold py-2.5 px-3 rounded-xl text-xs border border-slate-800 transition">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL LECTOR QR (CÁMARA TRASERA + ESCÁNER USB + INGRESO MANUAL)        -->
+  <!-- ===================================================================== -->
+  <div id="modal-escaner-qr" class="hidden fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 no-print">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-qrcode text-red-400"></i> Escanear Etiqueta / Folio QR
+        </h3>
+        <button type="button" onclick="cerrarEscanerQR()" class="text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="relative bg-black rounded-xl overflow-hidden border border-slate-700 aspect-square max-h-72 mx-auto flex items-center justify-center">
+        <video id="qr-video" playsinline class="w-full h-full object-cover"></video>
+        <canvas id="qr-canvas" class="hidden"></canvas>
+        <div id="qr-overlay-guia" class="pointer-events-none absolute inset-6 border-2 border-red-500/80 rounded-2xl">
+          <div class="animate-scanline absolute left-2 right-2 h-0.5 bg-red-500 shadow-[0_0_8px_#ef4444]"></div>
+        </div>
+        <div id="qr-camara-estado" class="hidden absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-4 text-center text-xs text-slate-300 gap-2">
+          <i class="fa-solid fa-video-slash text-2xl text-amber-400"></i>
+          <span id="qr-camara-msg">Iniciando cámara trasera...</span>
+        </div>
+      </div>
+
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+        <label class="block text-[11px] font-semibold text-slate-300">
+          <i class="fa-solid fa-barcode text-emerald-400 mr-1"></i> Escáner USB o Ingreso Manual de Folio:
+        </label>
+        <div class="flex gap-2">
+          <input type="text" id="input-qr-manual" placeholder="Ej. RN-0001 o escanea con pistola USB..."
+            onkeydown="if(event.key==='Enter'){ event.preventDefault(); procesarCodigoLeido(this.value); }"
+            class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-mono uppercase focus:outline-none focus:border-red-500">
+          <button type="button" onclick="procesarCodigoLeido(document.getElementById('input-qr-manual').value)"
+            class="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition">
+            Abrir
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL PATRÓN DE DESBLOQUEO 3x3 INTERACTIVO (v3.2)                     -->
+  <!-- ===================================================================== -->
+  <div id="modal-patron" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[65] flex items-center justify-center p-4 no-print">
+    <div class="bg-slate-900 border border-indigo-500/40 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-braille text-indigo-400"></i> Dibujar Patrón 3×3
+          </h3>
+          <p class="text-[11px] text-slate-400 mt-0.5">Desliza el dedo o cursor sobre los puntos (1 al 9)</p>
+        </div>
+        <button type="button" onclick="cerrarModalPatron()" class="text-slate-400 hover:text-white px-2 py-1 text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="flex flex-col items-center justify-center bg-slate-950 border border-slate-800 rounded-2xl p-4 select-none">
+        <div id="patron-pad-container" class="relative w-60 h-60 touch-none cursor-crosshair">
+          <svg id="patron-svg" viewBox="0 0 240 240" class="w-full h-full">
+            <g id="patron-lines-group"></g>
+            <line id="patron-active-line" x1="0" y1="0" x2="0" y2="0" stroke="#818cf8" stroke-width="5" stroke-linecap="round" class="hidden" opacity="0.7" />
+            <g id="patron-nodes-group"></g>
+          </svg>
+        </div>
+        <div class="mt-3 text-center">
+          <span class="text-[11px] text-slate-400 block">Secuencia capturada:</span>
+          <span id="patron-secuencia-texto" class="text-sm font-mono font-bold text-indigo-300">Toca o desliza para iniciar</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 pt-1">
+        <button type="button" onclick="reiniciarDibujoPatron()"
+          class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2.5 rounded-xl text-xs border border-slate-700 transition">
+          <i class="fa-solid fa-rotate-left mr-1"></i> Limpiar
+        </button>
+        <button type="button" onclick="cerrarModalPatron()"
+          class="bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-semibold py-2.5 rounded-xl text-xs border border-slate-700 transition">
+          Cancelar
+        </button>
+        <button type="button" onclick="confirmarPatronDibujado()"
+          class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-lg shadow-indigo-600/25 transition">
+          <i class="fa-solid fa-check mr-1"></i> Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- BARRA SUPERIOR DE NAVEGACIÓN (LIMPIA CON BOTÓN ÚNICO DE CONFIGURACIÓN)-->
+  <!-- ===================================================================== -->
+  <header id="app-header" class="bg-slate-900 border-b border-slate-800 px-5 py-3 flex flex-wrap items-center justify-between gap-3 no-print transition-colors duration-300">
+    <div class="flex items-center gap-3">
+      <div id="logo-box" onclick="rolActual==='tecnico' && cambiarPestana('dashboard')" class="cursor-pointer px-3.5 py-2 rounded-xl bg-gradient-to-br from-neutral-900 to-black border border-red-600/60 flex items-center justify-center shadow-lg shadow-red-600/20 shrink-0 transition-colors duration-300">
+        <span class="logo-redone-font text-2xl font-black leading-none tracking-tight select-none">
+          <span class="text-white">Red</span><span class="text-red-500">One</span>
+        </span>
+      </div>
+
+      <div>
+        <div class="flex items-center flex-wrap gap-2">
+          <span id="badge-rol" class="text-xs font-medium bg-red-600/20 text-red-400 border border-red-500/30 px-2.5 py-0.5 rounded-full">Vista Técnico</span>
+          <span id="badge-tienda-header" class="hidden text-xs font-bold px-2.5 py-0.5 rounded-full border transition-colors duration-300">Ixmicel 1</span>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-0.5" id="header-subtitulo-sistema">Control Central de Laboratorio, Cotizador con Garantías, QR, Cortes y Tiendas</p>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <div id="nav-pestanas-principal" class="flex flex-wrap items-center gap-1.5 text-xs sm:text-sm">
+        <button type="button" id="tab-registro" onclick="cambiarPestana('registro')"
+          class="px-4 py-2.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-white border-2 border-red-500/70 font-extrabold transition flex items-center gap-2 min-h-[42px] shadow-md shadow-red-600/15">
+          <i class="fa-solid fa-plus-circle text-red-400 text-sm"></i> <span id="lbl-tab-registro">Recepción</span>
+        </button>
+        <button type="button" id="tab-presupuestos" onclick="cambiarPestana('presupuestos')"
+          class="px-4 py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-white border-2 border-emerald-500/70 font-extrabold transition flex items-center gap-2 min-h-[42px] shadow-md shadow-emerald-600/15">
+          <i class="fa-solid fa-calculator text-emerald-400 text-sm"></i> <span>Presupuestos</span>
+        </button>
+        <button type="button" id="tab-dashboard" onclick="cambiarPestana('dashboard')"
+          class="px-3 py-2 rounded-xl bg-slate-800 text-white border border-slate-600 font-bold transition flex items-center gap-1.5 min-h-[38px] shadow">
+          <i class="fa-solid fa-chart-line text-red-400"></i> <span>Dashboard</span>
+        </button>
+        <button type="button" id="tab-bandeja" onclick="cambiarPestana('bandeja')"
+          class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold transition flex items-center gap-1.5 min-h-[38px] shadow-sm">
+          <i class="fa-solid fa-list-check text-amber-400"></i> <span>Equipos</span>
+          <span id="contador-bandeja" class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+        </button>
+        <button type="button" id="tab-cortes" onclick="cambiarPestana('cortes')"
+          class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold transition flex items-center gap-1.5 min-h-[38px] shadow-sm">
+          <i class="fa-solid fa-file-invoice-dollar text-sky-400"></i> <span>Cortes</span>
+          <span id="contador-cortes-pendientes" class="bg-sky-600 text-white text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+        </button>
+        <button type="button" id="tab-configuracion" onclick="cambiarPestana('configuracion')"
+          class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-300 border border-sky-500/40 font-bold transition flex items-center gap-1.5 min-h-[38px] shadow-sm" title="Panel de Configuración y Control General">
+          <i class="fa-solid fa-gear text-sky-400"></i> <span>Configuración</span>
+        </button>
+        <button type="button" id="tab-tienda-recibir" onclick="cambiarPestana('tienda-recibir')"
+          class="hidden px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-amber-500/40 font-bold transition flex items-center gap-1.5 min-h-[40px] shadow-sm">
+          <i class="fa-solid fa-paper-plane text-amber-400"></i> <span id="lbl-tab-tienda-recibir">Por Enviar al Taller</span>
+          <span id="contador-tienda-recibir" class="bg-amber-600 text-white text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+        </button>
+        <button type="button" id="tab-tienda-entregar" onclick="cambiarPestana('tienda-entregar')"
+          class="hidden px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-emerald-500/40 font-bold transition flex items-center gap-1.5 min-h-[40px] shadow-sm">
+          <i class="fa-solid fa-box-open text-emerald-400"></i> <span id="lbl-tab-tienda-entregar">Por Recibir del Taller</span>
+          <span id="contador-tienda-entregar" class="bg-emerald-600 text-white text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+        </button>
+      </div>
+
+      <button type="button" id="btn-header-qr" onclick="abrirEscanerQR()"
+        class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-red-600 text-white font-bold text-xs border border-slate-700 hover:border-red-500 transition flex items-center gap-1.5 min-h-[38px] shadow" title="Escanear código QR de etiqueta">
+        <i class="fa-solid fa-qrcode text-red-400"></i> <span class="hidden sm:inline">QR</span>
+      </button>
+
+      <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs gap-1">
+        <button type="button" id="btn-rol-tecnico" onclick="solicitarCambioATecnico()"
+          class="px-3 py-2 rounded-xl bg-red-600 text-white font-bold transition flex items-center gap-1.5 min-h-[38px] shadow-md">
+          <i class="fa-solid fa-screwdriver-wrench"></i> <span>Técnico</span>
+        </button>
+        <button type="button" id="btn-rol-tienda" onclick="solicitarCambioATienda()"
+          class="px-3 py-2 rounded-xl text-slate-400 hover:text-white font-semibold transition flex items-center gap-1.5 min-h-[38px]">
+          <i class="fa-solid fa-store"></i> <span>Tienda</span>
+        </button>
+      </div>
+
+      <span class="text-xs bg-slate-800 text-slate-300 px-3 py-2 rounded-xl border border-slate-700">
+        Folio: <strong id="header-folio" class="text-red-400">RN-0011</strong>
+      </span>
+    </div>
+  </header>
+
+  <!-- Aviso en Modo Tienda -->
+  <div id="banner-modo-tienda" class="hidden bg-sky-500/10 border-b border-sky-500/30 px-6 py-2.5 text-xs text-sky-300 flex flex-wrap items-center justify-between gap-2 no-print transition-colors duration-300">
+    <span>
+      <i class="fa-solid fa-store mr-1.5"></i>
+      <strong>Sucursal Activa: <span id="banner-nombre-tienda">Ixmicel 1</span></strong> (Sesión independiente protegida por PIN). Usa las 3 vistas exclusivas: <strong>Recepción / Registrar Equipo</strong>, <strong>Por Enviar al Taller</strong> y <strong>Por Recibir del Taller</strong>.
+    </span>
+    <div class="flex items-center gap-3">
+      <button type="button" onclick="solicitarCambioATienda(true)" class="bg-slate-900/80 hover:bg-slate-800 text-white px-2.5 py-1 rounded-lg border border-slate-700 font-semibold transition">
+        <i class="fa-solid fa-repeat mr-1"></i> Cambiar de Tienda
+      </button>
+      <button type="button" onclick="prepararNuevaOrden(); cambiarPestana('registro');" class="underline hover:text-white font-semibold">Nueva orden</button>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- VISTA 0: DASHBOARD EJECUTIVO                                          -->
+  <!-- ===================================================================== -->
+  <section id="vista-dashboard" class="max-w-7xl mx-auto p-4 md:p-6 space-y-6 no-print">
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center flex-wrap gap-2">
+          <span class="text-xs font-bold uppercase tracking-wider bg-red-600/20 text-red-400 border border-red-500/30 px-2.5 py-0.5 rounded-full">
+            Panel Ejecutivo RedOne
+          </span>
+          <span id="dash-periodo-etiqueta" class="text-xs text-sky-300 font-semibold bg-sky-500/10 border border-sky-500/30 px-2.5 py-0.5 rounded-full">
+            Mes en curso
+          </span>
+        </div>
+        <h1 class="text-lg md:text-xl font-bold text-white mt-1.5">Resumen Operativo y Financiero del Taller</h1>
+        <p class="text-xs text-slate-400">Indicadores en tiempo real en pesos mexicanos (MXN) filtrables por periodo y accesos rápidos.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 shrink-0">
+        <button type="button" onclick="cambiarPestana('presupuestos')"
+          class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2 text-xs sm:text-sm">
+          <i class="fa-solid fa-calculator text-base"></i> Presupuesto
+        </button>
+        <button type="button" onclick="prepararNuevaOrden(); cambiarPestana('registro');"
+          class="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-red-600/20 transition flex items-center justify-center gap-2 text-xs sm:text-sm">
+          <i class="fa-solid fa-plus-circle text-base"></i> Nueva Recepción
+        </button>
+        <button type="button" onclick="abrirEscanerQR()"
+          class="bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-xl border border-slate-700 transition flex items-center justify-center gap-2 text-xs sm:text-sm">
+          <i class="fa-solid fa-qrcode text-base text-red-400"></i> Escanear QR
+        </button>
+      </div>
+    </div>
+
+    <!-- Barra de Filtro de Rango de Fechas y Accesos Rápidos -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <span class="font-bold text-slate-300 mr-1"><i class="fa-solid fa-calendar-days text-sky-400 mr-1"></i> Periodo rápido:</span>
+        <button type="button" id="btn-dash-mes" onclick="aplicarPresetDashboard('mes')"
+          class="px-3 py-1.5 rounded-lg bg-sky-600 text-white font-bold transition">Este mes</button>
+        <button type="button" id="btn-dash-anio" onclick="aplicarPresetDashboard('anio')"
+          class="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 font-semibold transition">Año actual (Ene - Dic)</button>
+        <button type="button" id="btn-dash-todo" onclick="aplicarPresetDashboard('todo')"
+          class="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 font-semibold transition">Todo el historial</button>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <label class="text-slate-400 font-semibold">Desde:</label>
+        <input type="date" id="dash-fecha-desde" onchange="renderizarDashboard()"
+          class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-white focus:outline-none focus:border-sky-500">
+        <label class="text-slate-400 font-semibold">Hasta:</label>
+        <input type="date" id="dash-fecha-hasta" onchange="renderizarDashboard()"
+          class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-white focus:outline-none focus:border-sky-500">
+        <button type="button" onclick="limpiarRangoFechasDashboard()"
+          class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Limpiar fechas">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 4 Tarjetas KPI en Tiempo Real -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div onclick="cambiarPestana('bandeja')" class="cursor-pointer bg-slate-900 border border-slate-800 hover:border-amber-500/50 rounded-2xl p-5 shadow-lg transition space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-400">Pendientes en Taller</span>
+          <div class="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center">
+            <i class="fa-solid fa-screwdriver-wrench"></i>
+          </div>
+        </div>
+        <p id="kpi-pendientes" class="text-3xl font-black text-white">0</p>
+        <p class="text-[11px] text-amber-300">Por revisar o en reparación</p>
+      </div>
+
+      <div onclick="cambiarPestana('bandeja')" class="cursor-pointer bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-5 shadow-lg transition space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-400">Listos para Entregar</span>
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+            <i class="fa-solid fa-circle-check"></i>
+          </div>
+        </div>
+        <p id="kpi-listos" class="text-3xl font-black text-emerald-400">0</p>
+        <p class="text-[11px] text-slate-400">Terminados esperando entrega</p>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-400" id="lbl-kpi-ingresos">Ingresos Brutos (Periodo)</span>
+          <div class="w-9 h-9 rounded-xl bg-sky-500/15 text-sky-400 flex items-center justify-center">
+            <i class="fa-solid fa-sack-dollar"></i>
+          </div>
+        </div>
+        <p id="kpi-ingresos-mes" class="text-2xl sm:text-3xl font-black text-white">$0 MXN</p>
+        <p class="text-[11px] text-sky-300" id="kpi-ordenes-mes">0 órdenes en el periodo</p>
+      </div>
+
+      <div class="bg-slate-900 border border-emerald-800/50 rounded-2xl p-5 shadow-lg space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-emerald-300" id="lbl-kpi-utilidad">Ingresos Netos (Periodo)</span>
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <i class="fa-solid fa-arrow-trend-up"></i>
+          </div>
+        </div>
+        <p id="kpi-utilidad-mes" class="text-2xl sm:text-3xl font-black text-emerald-400">$0 MXN</p>
+        <p class="text-[11px] text-slate-400">Ingresos menos costo de refacciones</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div>
+            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-trophy text-amber-400"></i> Ingresos por Sucursal / Tienda Aliada
+            </h2>
+            <p class="text-xs text-slate-400">Comparativa de facturación en MXN según el rango seleccionado.</p>
+          </div>
+          <span id="dash-tienda-lider" class="text-xs font-bold px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+            Líder: ---
+          </span>
+        </div>
+        <div id="dash-barras-tiendas" class="space-y-3.5 pt-1"></div>
+      </div>
+
+      <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="border-b border-slate-800 pb-3">
+          <h2 class="text-sm font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-mobile-screen-button text-red-400"></i> Top 5 Modelos Más Reparados
+          </h2>
+          <p class="text-xs text-slate-400" id="dash-sub-top-modelos">Equipos con mayor frecuencia en el rango elegido.</p>
+        </div>
+        <div id="dash-top-modelos" class="space-y-2.5"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- VISTA ENCARGADO TIENDA: POR RECIBIR Y POR ENTREGAR (SOLO LECTURA)     -->
+  <!-- ===================================================================== -->
+  <section id="vista-tienda-seguimiento" class="hidden max-w-7xl mx-auto p-4 md:p-6 space-y-5 no-print">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span id="badge-vista-tienda-tipo" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+              Por Recibir de Taller
+            </span>
+            <span class="text-[11px] text-slate-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full">
+              <i class="fa-solid fa-store mr-1 text-sky-400"></i> Seguimiento Sucursal
+            </span>
+          </div>
+          <h2 id="titulo-vista-tienda-seguimiento" class="text-base md:text-lg font-bold text-white">
+            Equipos Enviados a Taller (Por Recibir)
+          </h2>
+          <p id="desc-vista-tienda-seguimiento" class="text-xs text-slate-400 mt-0.5">
+            Equipos exclusivos de esta sucursal que aún siguen en revisión o reparación.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+            <input type="text" id="input-buscador-tienda" oninput="renderizarVistaTienda()" placeholder="Buscar folio o modelo..."
+              class="bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-sky-500 w-56">
+          </div>
+        </div>
+      </div>
+
+      <div id="grid-ordenes-tienda" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+      <div id="bloque-historial-entregados-tienda" class="hidden pt-4 border-t border-slate-800">
+        <button type="button" onclick="alternarHistorialTienda()"
+          class="w-full flex items-center justify-between bg-slate-950 hover:bg-slate-800/80 border border-slate-800 rounded-xl px-4 py-3 text-xs font-semibold text-slate-300 transition">
+          <span class="flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
+            Ver equipos ya entregados al cliente (<span id="contador-tienda-entregados-hist">0</span>)
+          </span>
+          <i id="icono-toggle-hist-tienda" class="fa-solid fa-chevron-down text-slate-400"></i>
+        </button>
+        <div id="grid-historial-entregados-tienda" class="hidden grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- VISTA 1: BANDEJA DE EQUIPOS RECIBIDOS (SIN BOTÓN RESET DEMO SUELTO)   -->
+  <!-- ===================================================================== -->
+  <section id="vista-bandeja" class="hidden max-w-7xl mx-auto p-4 md:p-6 space-y-5 no-print">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" id="resumen-contadores"></div>
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-magnifying-glass text-red-400"></i> Control de Taller RedOne y Tiendas Aliadas
+          </h2>
+          <p class="text-xs text-slate-400">Identifica al instante el tipo de equipo, reparación, garantía y actualiza costos o estatus.</p>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <div class="relative">
+            <i class="fa-solid fa-qrcode absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+            <input type="text" id="input-buscador" oninput="renderizarBandeja()" placeholder="Folio, Incell, OLED, modelo..."
+              class="bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-red-500 w-60">
+          </div>
+          <select id="filtro-tienda" onchange="renderizarBandeja()"
+            class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-red-500">
+            <option value="TODAS">Todas las tiendas</option>
+          </select>
+          <select id="filtro-estatus" onchange="renderizarBandeja()"
+            class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-red-500">
+            <option value="TODOS">Todos los estatus</option>
+            <option value="Pendiente de revisar">Pendiente de revisar</option>
+            <option value="En reparación / Esperando pieza">En reparación / Esperando pieza</option>
+            <option value="Listo para entregar">Listo para entregar</option>
+            <option value="Entregado">Entregado</option>
+            <option value="Entregado y Pagado">Entregado y Pagado</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="lista-ordenes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- VISTA 2: FORMULARIO DE RECEPCIÓN / EDICIÓN                            -->
+  <!-- ===================================================================== -->
+  <main id="vista-registro" class="hidden max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <section class="lg:col-span-7 space-y-5 no-print">
+
+      <div id="banner-edicion" class="hidden bg-sky-500/15 border border-sky-500/40 rounded-2xl p-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-sky-300 uppercase">Editando Orden Existente: <span id="lbl-folio-editando">RN-0001</span></p>
+            <p class="text-xs text-slate-300">Agrega el costo de pieza(s), tu mano de obra, cambia el estatus, gestiona fotos y guarda.</p>
+          </div>
+        </div>
+        <button type="button" onclick="prepararNuevaOrden()" class="text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg border border-slate-700">
+          Nueva orden
+        </button>
+      </div>
+
+      <form id="form-recepcion" novalidate class="space-y-5" onsubmit="event.preventDefault(); guardarOrden();">
+
+        <!-- Tarjeta 0: Selector de Origen / Sucursal -->
+        <div id="card-origen" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl transition-colors duration-300">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="titulo-seccion text-sm font-semibold uppercase tracking-wider text-red-400 flex items-center gap-2 transition-colors duration-300">
+              <i class="fa-solid fa-store"></i> <span data-campo-label="origen" id="lbl-tarjeta-origen">Origen del Equipo</span>
+            </h2>
+            <span id="lbl-tienda-bloqueada-badge" class="hidden text-[11px] text-slate-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full">
+              <i class="fa-solid fa-lock mr-1"></i> Sucursal autenticada
+            </span>
+          </div>
+          <div id="contenedor-botones-origen" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5"></div>
+        </div>
+
+        <!-- Tarjeta 1A: Datos específicos de TIENDA ALIADA -->
+        <div id="seccion-tienda" class="hidden bg-slate-900 border border-sky-500/40 rounded-2xl p-5 shadow-xl transition-colors duration-300">
+          <div class="flex items-center justify-between mb-4">
+            <h2 id="titulo-card-tienda" class="text-sm font-semibold uppercase tracking-wider text-sky-400 flex items-center gap-2 transition-colors duration-300">
+              <i class="fa-solid fa-file-invoice"></i> 1. Datos de Recepción (<span id="lbl-titulo-tienda">Ixmicel 1</span>)
+            </h2>
+            <span id="badge-wa-tienda" class="text-[11px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-0.5 rounded-full">
+              WhatsApp listo
+            </span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label data-campo-label="folioTienda" class="block text-xs text-slate-300 mb-1">Folio de la Tienda *</label>
+              <input type="text" id="folio-tienda" placeholder="Ej. 452" oninput="actualizarVista()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-sky-400">
+            </div>
+            <div>
+              <label data-campo-label="encargadoTienda" class="block text-xs text-slate-300 mb-1">Encargado / Empleado que recibió *</label>
+              <input type="text" id="encargado-tienda" list="lista-empleados-sugeridos" placeholder="Nombre de quien recibe" oninput="actualizarVista()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-sky-400">
+              <datalist id="lista-empleados-sugeridos"></datalist>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tarjeta 1B: Datos del Cliente Directo -->
+        <div id="seccion-cliente-directo" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+          <h2 class="titulo-seccion text-sm font-semibold uppercase tracking-wider text-red-400 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-user"></i> 1. Datos del Cliente Directo
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label data-campo-label="cliente" class="block text-xs text-slate-400 mb-1">Nombre completo del cliente *</label>
+              <input type="text" id="cliente" placeholder="Ej. Juan Pérez" oninput="actualizarVista()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-red-500">
+            </div>
+            <div>
+              <label data-campo-label="telefono" class="block text-xs text-slate-400 mb-1">Teléfono / WhatsApp (10 dígitos) *</label>
+              <input type="tel" id="telefono" maxlength="10" placeholder="Ej. 7721234567" oninput="actualizarVista()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-red-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- Tarjeta 2: Equipo, Tipo de Reparación Rápida, Módulo "Otros" y Condiciones -->
+        <div id="card-equipo" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl transition-colors duration-300">
+          <h2 class="titulo-seccion text-sm font-semibold uppercase tracking-wider text-red-400 mb-4 flex items-center gap-2 transition-colors duration-300">
+            <i class="fa-solid fa-mobile-screen-button"></i> 2. Equipo y Tipo de Reparación
+          </h2>
+
+          <div class="mb-4">
+            <label data-campo-label="tipoEquipo" class="block text-xs font-semibold text-slate-200 mb-2">Categoría del Equipo Recibido *</label>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button type="button" onclick="seleccionarCategoriaRecepcion('Celular')" id="rec-cat-Celular"
+                class="rec-cat-btn bg-red-600 text-white border border-red-400 rounded-xl py-2 px-3 text-xs font-bold transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-mobile-screen"></i> Celular
+              </button>
+              <button type="button" onclick="seleccionarCategoriaRecepcion('Laptop / PC')" id="rec-cat-Laptop / PC"
+                class="rec-cat-btn bg-slate-950 text-slate-300 border border-slate-800 hover:border-sky-500/60 rounded-xl py-2 px-3 text-xs font-semibold transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-laptop text-sky-400"></i> Laptop / PC
+              </button>
+              <button type="button" onclick="seleccionarCategoriaRecepcion('Impresora')" id="rec-cat-Impresora"
+                class="rec-cat-btn bg-slate-950 text-slate-300 border border-slate-800 hover:border-amber-500/60 rounded-xl py-2 px-3 text-xs font-semibold transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-print text-amber-400"></i> Impresora
+              </button>
+              <button type="button" onclick="seleccionarCategoriaRecepcion('Otros')" id="rec-cat-Otros"
+                class="rec-cat-btn bg-slate-950 text-slate-300 border border-slate-800 hover:border-purple-500/60 rounded-xl py-2 px-3 text-xs font-semibold transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-cubes text-purple-400"></i> Otros
+              </button>
+            </div>
+
+            <div id="bloque-recepcion-otros" class="hidden mt-3 bg-purple-950/20 border border-purple-500/40 rounded-xl p-3 space-y-2">
+              <label data-campo-label="especificacionOtros" class="block text-xs font-bold text-purple-300">
+                Especifica manualmente qué equipo "Otro" llegó a reparación *
+              </label>
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" onclick="ponerAtajoOtroEquipo('Consola de videojuegos')" class="text-[11px] bg-slate-900 hover:bg-purple-900/50 text-purple-200 px-2.5 py-1 rounded-lg border border-purple-500/30">Consola</button>
+                <button type="button" onclick="ponerAtajoOtroEquipo('Cargador / Fuente de poder')" class="text-[11px] bg-slate-900 hover:bg-purple-900/50 text-purple-200 px-2.5 py-1 rounded-lg border border-purple-500/30">Cargador</button>
+                <button type="button" onclick="ponerAtajoOtroEquipo('Placa lógica / Tarjeta')" class="text-[11px] bg-slate-900 hover:bg-purple-900/50 text-purple-200 px-2.5 py-1 rounded-lg border border-purple-500/30">Placa</button>
+                <button type="button" onclick="ponerAtajoOtroEquipo('Bocina / Audio portátil')" class="text-[11px] bg-slate-900 hover:bg-purple-900/50 text-purple-200 px-2.5 py-1 rounded-lg border border-purple-500/30">Bocina</button>
+              </div>
+              <input type="text" id="recepcion-otro-equipo" placeholder="Ej. Consola PS4, Cargador Dell 65W, Placa base, Bocina JBL..." oninput="actualizarVista()"
+                class="w-full bg-slate-900 border border-purple-500/50 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-purple-400">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label data-campo-label="marca" class="block text-xs text-slate-400 mb-1">Marca *</label>
+              <input type="text" id="marca" list="lista-marcas" placeholder="Ej. Samsung, Apple, Sony..." oninput="actualizarVista()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-red-500">
+              <datalist id="lista-marcas">
+                <option value="Samsung">
+                <option value="Apple / iPhone">
+                <option value="Motorola">
+                <option value="Xiaomi / Redmi / POCO">
+                <option value="OPPO">
+                <option value="Huawei / Honor">
+                <option value="Realme">
+                <option value="ZTE">
+                <option value="HP / Lenovo / Dell / Asus">
+                <option value="Epson / Canon / Brother">
+                <option value="Sony / PlayStation / Xbox">
+              </datalist>
+            </div>
+            <div>
+              <label data-campo-label="modelo" class="block text-xs text-slate-400 mb-1">Modelo *</label>
+              <input type="text" id="modelo" placeholder="Ej. Galaxy A54 / PS5" oninput="actualizarVista()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-red-500">
+            </div>
+            <div>
+              <label data-campo-label="clave" class="block text-xs text-slate-400 mb-1">Contraseña / PIN / Patrón</label>
+              <div class="flex gap-1.5">
+                <input type="text" id="clave" placeholder="Ej. 1234, Patrón o Sin clave" oninput="actualizarVista(); actualizarPreviewPatronInline();"
+                  class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-red-500">
+                <button type="button" onclick="abrirModalPatron()"
+                  class="shrink-0 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/40 rounded-xl px-3 py-2 text-xs font-bold transition flex items-center gap-1.5"
+                  title="Dibujar patrón de desbloqueo 3×3">
+                  <i class="fa-solid fa-braille"></i> <span class="hidden sm:inline">Dibujar Patrón</span>
+                </button>
+              </div>
+              <div id="preview-patron-inline" class="hidden mt-2 flex items-center gap-2.5 bg-slate-950/90 border border-indigo-500/30 rounded-xl px-3 py-1.5">
+                <div id="svg-preview-patron-inline" class="w-10 h-10 shrink-0 flex items-center justify-center"></div>
+                <div class="text-[11px] leading-tight flex-1">
+                  <span class="text-indigo-300 font-bold block">Patrón registrado</span>
+                  <span id="txt-preview-patron-inline" class="text-slate-300 font-mono"></span>
+                </div>
+                <button type="button" onclick="limpiarPatronInline()" class="text-[11px] text-slate-400 hover:text-rose-400 px-1.5 py-1" title="Quitar patrón">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="campos-extra-mostrador" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-800/80">
+            <div>
+              <label data-campo-label="imei" class="block text-xs text-slate-400 mb-1">IMEI / Serie</label>
+              <input type="text" id="imei" placeholder="Opcional" oninput="actualizarVista()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-red-500">
+            </div>
+            <div>
+              <label data-campo-label="accesorios" class="block text-xs text-slate-400 mb-1">Accesorios recibidos</label>
+              <input type="text" id="accesorios" placeholder="Ej. Funda negra, cable, sin chip" oninput="actualizarVista()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-red-500">
+            </div>
+          </div>
+
+          <!-- SELECCIÓN RÁPIDA DE REPARACIÓN -->
+          <div class="mt-4 pt-4 border-t border-slate-800/80">
+            <label data-campo-label="tipoReparacion" class="block text-xs font-semibold text-slate-200 mb-2">
+              ¿Qué reparación se va a realizar? *
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <button type="button" onclick="seleccionarTipoReparacion('Pantalla Incell')" id="btn-rep-incell"
+                class="rep-btn bg-cyan-500/15 text-cyan-200 border-2 border-cyan-500 rounded-xl p-3 text-left transition flex items-start gap-2.5 shadow-md">
+                <div class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-300 flex items-center justify-center shrink-0 mt-0.5">
+                  <i class="fa-solid fa-mobile-screen"></i>
+                </div>
+                <div>
+                  <span class="block text-xs font-bold text-white">Cambio de Pantalla</span>
+                  <span class="inline-block text-[11px] font-bold text-cyan-300 bg-cyan-950/90 px-2 py-0.5 rounded mt-0.5 border border-cyan-700/60">
+                    INCELL (Económica)
+                  </span>
+                </div>
+              </button>
+
+              <button type="button" onclick="seleccionarTipoReparacion('Pantalla OLED')" id="btn-rep-oled"
+                class="rep-btn bg-slate-950 text-slate-300 border border-slate-800 hover:border-emerald-500/60 rounded-xl p-3 text-left transition flex items-start gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <i class="fa-solid fa-gem"></i>
+                </div>
+                <div>
+                  <span class="block text-xs font-bold text-white">Cambio de Pantalla</span>
+                  <span class="inline-block text-[11px] font-bold text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded mt-0.5 border border-emerald-700/50">
+                    OLED (Original / Alta)
+                  </span>
+                </div>
+              </button>
+
+              <button type="button" onclick="seleccionarTipoReparacion('Otro servicio')" id="btn-rep-otro"
+                class="rep-btn bg-slate-950 text-slate-300 border border-slate-800 hover:border-amber-500/60 rounded-xl p-3 text-left transition flex items-start gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <i class="fa-solid fa-screwdriver-wrench"></i>
+                </div>
+                <div>
+                  <span class="block text-xs font-bold text-white">Otra Reparación</span>
+                  <span class="block text-[11px] text-slate-400 mt-0.5">
+                    Carga, software, flex, placa...
+                  </span>
+                </div>
+              </button>
+            </div>
+
+            <div id="bloque-reparacion-manual" class="hidden mt-3 bg-slate-950/90 border border-amber-500/40 rounded-xl p-3 space-y-2">
+              <div class="flex flex-wrap gap-1.5">
+                <span class="text-[11px] text-slate-400 mr-1 self-center">Atajos:</span>
+                <button type="button" onclick="ponerAtajoManual('Cambio de centro de carga')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700">Centro de carga</button>
+                <button type="button" onclick="ponerAtajoManual('Instalación de software (Office / programas)')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700">Instalación software</button>
+                <button type="button" onclick="ponerAtajoManual('Cambio de flex de carga / interconexión')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700">Flex</button>
+                <button type="button" onclick="ponerAtajoManual('Cambio de batería')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700">Batería</button>
+                <button type="button" onclick="ponerAtajoManual('Baño químico / Equipo mojado')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700">Equipo mojado</button>
+                <button type="button" onclick="ponerAtajoManual('Limpieza y mantenimiento general')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700">Limpieza / Mantto</button>
+              </div>
+              <input type="text" id="reparacion-manual" placeholder="Escribe qué reparación es..." oninput="actualizarVista()"
+                class="w-full bg-slate-900 border border-amber-500/50 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
+            </div>
+
+            <div class="mt-3">
+              <label data-campo-label="falla" class="block text-xs text-slate-400 mb-1">Observación adicional de la falla / garantía (opcional)</label>
+              <input type="text" id="falla" placeholder="Ej. Garantía 100% vigente, con marco, solo vibra..." oninput="actualizarVista()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-red-500">
+            </div>
+          </div>
+
+          <div class="mt-4 pt-4 border-t border-slate-800/80">
+            <label data-campo-label="condiciones" class="block text-xs text-slate-400 mb-2">Condiciones físicas en que se recibe *</label>
+            <div class="flex flex-wrap gap-2 text-xs mb-2.5">
+              <label class="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg cursor-pointer hover:border-slate-600">
+                <input type="checkbox" class="condicion-chk accent-red-500" value="Enciende" onchange="actualizarVista()"> Enciende
+              </label>
+              <label class="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg cursor-pointer hover:border-slate-600">
+                <input type="checkbox" class="condicion-chk accent-red-500" value="Apagado / Sin imagen" onchange="actualizarVista()"> Apagado / Sin imagen
+              </label>
+              <label class="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg cursor-pointer hover:border-slate-600">
+                <input type="checkbox" class="condicion-chk accent-red-500" value="Display estrellado" onchange="actualizarVista()"> Display estrellado
+              </label>
+              <label class="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg cursor-pointer hover:border-slate-600">
+                <input type="checkbox" class="condicion-chk accent-red-500" value="Tapa rota" onchange="actualizarVista()"> Tapa rota
+              </label>
+              <label class="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg cursor-pointer hover:border-slate-600">
+                <input type="checkbox" class="condicion-chk accent-red-500" value="Mojado / Humedad" onchange="actualizarVista()"> Mojado / Humedad
+              </label>
+              <label class="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg cursor-pointer hover:border-slate-600">
+                <input type="checkbox" class="condicion-chk accent-red-500" value="Abierto previamente" onchange="actualizarVista()"> Abierto previamente
+              </label>
+            </div>
+            <input type="text" id="condicion-detalle" placeholder="Detalle físico adicional..." oninput="actualizarVista()"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-red-500">
+          </div>
+        </div>
+
+        <!-- Tarjeta 3: Evidencia Fotográfica Optimizada -->
+        <div id="card-fotos" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl transition-colors duration-300">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="titulo-seccion text-sm font-semibold uppercase tracking-wider text-red-400 flex items-center gap-2 transition-colors duration-300">
+              <i class="fa-solid fa-camera"></i> 3. Evidencia Fotográfica Optimizada
+            </h2>
+            <span id="contador-fotos" class="text-xs text-slate-400">0 fotos adjuntas</span>
+          </div>
+
+          <label for="input-fotos"
+            class="flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-red-500 rounded-xl p-4 cursor-pointer bg-slate-950/60 transition">
+            <i class="fa-solid fa-cloud-arrow-up text-2xl text-slate-400 mb-1"></i>
+            <span class="text-xs font-medium text-slate-300">Toca para tomar foto o seleccionar de galería</span>
+            <span class="text-[11px] text-emerald-400/90 mt-0.5"><i class="fa-solid fa-bolt mr-1"></i>Compresión automática ligera para almacenamiento rápido</span>
+            <span class="text-[11px] text-slate-500" id="ruta-drive-preview">Carpeta Drive: RedOne / Mostrador / RN-0011</span>
+            <input type="file" id="input-fotos" accept="image/*" capture="environment" multiple class="hidden" onchange="procesarFotos(event)">
+          </label>
+
+          <div id="galeria-fotos" class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3"></div>
+        </div>
+
+        <!-- Tarjeta 4: Costos y Notas Técnicas -->
+        <div id="tarjeta-costos" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="titulo-seccion text-sm font-semibold uppercase tracking-wider text-red-400 flex items-center gap-2">
+              <i class="fa-solid fa-calculator"></i> 4. Costos, Mano de Obra y Estatus (MXN)
+            </h2>
+            <span class="text-[11px] bg-slate-800 text-slate-300 px-2.5 py-0.5 rounded-full">
+              Solo Técnico
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-950/70 p-3.5 rounded-xl border border-slate-800/80">
+            <div>
+              <label data-campo-label="costoPieza" class="block text-xs text-slate-400 mb-1">Costo Pieza(s) ($ MXN)</label>
+              <input type="number" id="costo-pieza" min="0" step="1" placeholder="0" oninput="actualizarVista()"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-sm font-semibold text-rose-400 focus:outline-none focus:border-red-500">
+            </div>
+            <div>
+              <label data-campo-label="manoObra" class="block text-xs text-slate-400 mb-1">Tu Mano de Obra ($ MXN)</label>
+              <input type="number" id="mano-obra" min="0" step="1" placeholder="0" oninput="actualizarVista()"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-sm font-semibold text-emerald-400 focus:outline-none focus:border-red-500">
+            </div>
+            <div>
+              <label data-campo-label="totalServicio" class="block text-xs text-slate-400 mb-1">Total ($ MXN)</label>
+              <input type="text" id="total-calculado" readonly value="$0 MXN"
+                class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-sm font-bold text-white">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label data-campo-label="estatusOrden" class="block text-xs text-slate-400 mb-1">Estatus de Reparación</label>
+              <select id="estatus-orden" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-red-500">
+                <option value="Pendiente de revisar">Pendiente de revisar</option>
+                <option value="En reparación / Esperando pieza">En reparación / Esperando pieza</option>
+                <option value="Listo para entregar">Listo para entregar</option>
+                <option id="opt-estatus-final-orden" value="Entregado y Pagado">Entregado y Pagado</option>
+              </select>
+            </div>
+            <div>
+              <label data-campo-label="notasTecnico" class="block text-xs text-slate-400 mb-1">Notas técnicas / Diagnóstico interno</label>
+              <input type="text" id="notas-tecnico" placeholder="Ej. Garantía 100% o 50% según cotización"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-red-500">
+            </div>
+          </div>
+
+          <div class="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800/80 space-y-2.5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <label data-campo-label="garantiaAplicable" class="block text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                <i class="fa-solid fa-shield-halved text-emerald-400"></i> Política de Garantía Aplicable *
+              </label>
+              <span id="badge-garantia-recepcion" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                Garantía 100% (30 días)
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button type="button" id="btn-gar-100" onclick="seleccionarGarantiaOrden('100')"
+                class="gar-btn bg-emerald-500/20 text-emerald-200 border-2 border-emerald-400 rounded-xl p-2.5 text-left transition">
+                <span class="block text-xs font-bold"><i class="fa-solid fa-certificate mr-1"></i> Garantía 100%</span>
+                <span class="block text-[10px] text-emerald-300/80">30 días naturales sin costo</span>
+              </button>
+
+              <button type="button" id="btn-gar-50" onclick="seleccionarGarantiaOrden('50')"
+                class="gar-btn bg-slate-900 text-slate-300 border border-slate-700 hover:border-amber-500/60 rounded-xl p-2.5 text-left transition">
+                <span class="block text-xs font-bold"><i class="fa-solid fa-percent mr-1"></i> Garantía 50%</span>
+                <span class="block text-[10px] text-slate-400">Cliente cubre 50% en reposición</span>
+              </button>
+
+              <button type="button" id="btn-gar-0" onclick="seleccionarGarantiaOrden('0')"
+                class="gar-btn bg-slate-900 text-slate-300 border border-slate-700 hover:border-rose-500/60 rounded-xl p-2.5 text-left transition">
+                <span class="block text-xs font-bold"><i class="fa-solid fa-ban mr-1"></i> No aplica garantía</span>
+                <span class="block text-[10px] text-slate-400">Sin respaldo (0% descuento)</span>
+              </button>
+            </div>
+
+            <input type="hidden" id="garantia-tipo" value="100">
+            <p id="lbl-detalle-garantia-recepcion" class="text-[11px] text-slate-300 bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-2">
+              Garantía del 100% por 30 días naturales contra defectos de fábrica o falla de refacción (no cubre golpes, presión, humedad ni sellos rotos).
+            </p>
+          </div>
+
+          <div id="bloque-anticipo-mostrador" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label data-campo-label="anticipo" class="block text-xs text-slate-400 mb-1">Anticipo recibido ($ MXN)</label>
+              <input type="number" id="anticipo" min="0" step="1" placeholder="0" oninput="actualizarVista()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-sky-400 focus:outline-none focus:border-red-500">
+            </div>
+            <div>
+              <label data-campo-label="saldoRestante" class="block text-xs text-slate-400 mb-1">Saldo Restante ($ MXN)</label>
+              <input type="text" id="saldo" readonly value="$0 MXN"
+                class="w-full bg-slate-800/70 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-bold text-amber-400">
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-guardar"
+          class="w-full bg-red-600 hover:bg-red-500 text-white font-semibold py-3.5 px-6 rounded-2xl shadow-lg shadow-red-600/25 transition flex items-center justify-center gap-2 text-sm">
+          <i class="fa-solid fa-floppy-disk"></i> <span id="lbl-btn-guardar">Guardar Orden</span>
+        </button>
+
+      </form>
+    </section>
+
+    <!-- COLUMNA DERECHA: VISTA PREVIA CON QR Y LOGOTIPO REDONE -->
+    <aside class="lg:col-span-5 space-y-4">
+      <div id="card-preview" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl sticky top-6 transition-colors duration-300">
+
+        <div class="flex items-center justify-between mb-4 no-print">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400" id="lbl-vista-previa">Vista Previa del Ticket</span>
+          <div id="selector-ancho-ticket" class="flex bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+            <button type="button" id="btn-58" onclick="cambiarAnchoTicket(58)" class="px-2.5 py-1 rounded bg-red-600 text-white font-medium">58 mm</button>
+            <button type="button" id="btn-80" onclick="cambiarAnchoTicket(80)" class="px-2.5 py-1 rounded text-slate-400 hover:text-white">80 mm</button>
+          </div>
+        </div>
+
+        <div class="flex justify-center bg-slate-950/80 p-4 rounded-xl border border-slate-800 overflow-x-auto">
+          <div id="area-impresion" class="ticket-58 bg-white text-black p-4 rounded shadow-md font-mono leading-snug">
+
+            <div id="contenido-ticket-cliente">
+              <div class="text-center border-b border-dashed border-black pb-2 mb-2">
+                <div class="flex flex-col items-center justify-center mb-1">
+                  <p class="font-black italic text-xl tracking-tight leading-none" id="tk-nombre-negocio">
+                    RED<span class="underline">ONE</span>
+                  </p>
+                </div>
+                <p class="text-[10px]" id="tk-subtitulo-negocio">Servicio Técnico Especializado</p>
+                <p class="text-[10px]" id="tk-direccion-negocio">Ixmiquilpan, Hidalgo</p>
+                <p class="text-[10px] mt-1 font-bold">FOLIO: <span class="sync-folio-rn">RN-0011</span></p>
+                <p class="text-[10px] sync-fecha">--/--/---- --:--</p>
+              </div>
+
+              <div class="space-y-1 border-b border-dashed border-black pb-2 mb-2">
+                <p><strong>CLIENTE:</strong> <span id="tk-cliente">---</span></p>
+                <p><strong>TEL:</strong> <span id="tk-telefono">---</span></p>
+              </div>
+
+              <div class="space-y-1 border-b border-dashed border-black pb-2 mb-2">
+                <p><strong>EQUIPO:</strong> <span class="sync-categoria-equipo">CELULAR</span></p>
+                <p><strong>MARCA:</strong> <span class="sync-marca">---</span></p>
+                <p><strong>MODELO:</strong> <span class="sync-modelo">---</span></p>
+                <p><strong>IMEI/SN:</strong> <span id="tk-imei">---</span></p>
+                <p><strong>CLAVE:</strong> <span class="sync-clave">---</span></p>
+                <p><strong>ACCESORIOS:</strong> <span id="tk-accesorios">Ninguno</span></p>
+                <p><strong>SERVICIO:</strong> <strong class="sync-servicio-resumen">CAMBIO DE PANTALLA (INCELL)</strong></p>
+                <p><strong>CONDICIONES:</strong> <span class="sync-condiciones">Sin observaciones</span></p>
+              </div>
+
+              <div class="space-y-1 border-b border-dashed border-black pb-2 mb-2">
+                <div class="flex justify-between">
+                  <span>TOTAL SERVICIO:</span>
+                  <strong id="tk-costo">$0 MXN</strong>
+                </div>
+                <div class="flex justify-between">
+                  <span>ANTICIPO:</span>
+                  <span id="tk-anticipo">$0 MXN</span>
+                </div>
+                <div class="flex justify-between font-bold text-xs pt-1">
+                  <span>RESTANTE:</span>
+                  <span id="tk-saldo">$0 MXN</span>
+                </div>
+              </div>
+
+              <div class="border border-black p-1.5 mb-2 text-[9px] leading-tight">
+                <p class="font-bold uppercase">GARANTÍA: <span id="tk-garantia-titulo">100% (30 DÍAS)</span></p>
+                <p id="tk-garantia-detalle" class="mt-0.5">Cubre defectos de fábrica por 30 días naturales. No aplica por golpes, presión o humedad.</p>
+              </div>
+
+              <div class="flex flex-col items-center justify-center py-2 border-b border-dashed border-black mb-2">
+                <div id="qr-ticket-mostrador"></div>
+                <span class="text-[8px] mt-1">Escanea para abrir orden en taller</span>
+              </div>
+
+              <div class="text-[9px] text-center space-y-1">
+                <p>Evidencia fotográfica adjunta: <strong class="sync-fotos">0</strong> foto(s).</p>
+                <p class="pt-1" id="tk-leyenda-garantia">Después de 30 días de notificado, RedOne no se hace responsable por equipos olvidados. Equipos mojados o apagados no tienen garantía de encendido.</p>
+                <p class="pt-3 border-t border-black mt-4 w-3/4 mx-auto">Firma de conformidad</p>
+              </div>
+            </div>
+
+            <div id="contenido-etiqueta-trasera" class="hidden">
+              <div class="border-2 border-black p-2">
+                <div class="bg-black text-white px-2 py-1 flex items-center justify-between">
+                  <span class="font-black text-xs uppercase tracking-wider sync-tienda-nombre">IXMICEL 1</span>
+                  <span class="font-bold text-xs">#<span class="sync-folio-tienda">---</span></span>
+                </div>
+
+                <div class="flex items-center justify-between gap-2 border-b border-black py-1.5">
+                  <div class="space-y-0.5 text-[10px]">
+                    <p class="font-black text-xs flex items-center gap-1">
+                      <span class="bg-black text-white px-1 italic text-[9px]">REDONE</span>
+                      <span class="sync-folio-rn">RN-0011</span>
+                    </p>
+                    <p class="sync-fecha text-[9px]">--/--/----</p>
+                    <p>Recibió: <strong class="sync-encargado">---</strong></p>
+                    <p>Fotos: <strong class="sync-fotos">0</strong></p>
+                  </div>
+                  <div class="p-1 bg-white border border-black shrink-0">
+                    <div id="qr-etiqueta-tienda"></div>
+                  </div>
+                </div>
+
+                <div class="py-1.5 space-y-1 border-b border-dashed border-black text-[11px]">
+                  <p class="font-bold text-xs uppercase leading-tight">
+                    <span class="sync-marca">---</span> <span class="sync-modelo">---</span>
+                  </p>
+                  <p class="text-[10px]"><strong>TIPO:</strong> <span class="sync-categoria-equipo">CELULAR</span></p>
+                  <p><strong>CLAVE:</strong> <span class="sync-clave">Sin clave</span></p>
+                  <div class="border border-black px-1.5 py-0.5 font-black text-[11px] uppercase bg-gray-100">
+                    <span class="sync-servicio-resumen">PANTALLA INCELL</span>
+                  </div>
+                  <div class="flex justify-between items-center pt-1 font-black text-xs border-t border-black/40">
+                    <span>COBRO TIENDA:</span>
+                    <span id="etq-costo-tienda">$0 MXN</span>
+                  </div>
+                </div>
+
+                <div class="pt-1 text-[10px]">
+                  <p><strong>ESTADO:</strong> <span class="sync-condiciones">Sin observaciones</span></p>
+                </div>
+              </div>
+              <p class="text-[8px] text-center mt-1 text-gray-600">-- Escanea QR RedOne para editar costos --</p>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-3 mt-4 no-print">
+          <button type="button" id="btn-imprimir" onclick="window.print()"
+            class="bg-slate-800 hover:bg-slate-700 text-white font-medium py-3 px-4 rounded-xl border border-slate-700 transition flex items-center justify-center gap-2 text-sm">
+            <i class="fa-solid fa-print"></i> <span id="lbl-btn-imprimir">Imprimir Ticket</span>
+          </button>
+          <button type="button" id="btn-whatsapp" onclick="enviarWhatsApp()"
+            class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 px-4 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2 text-sm">
+            <i class="fa-brands fa-whatsapp text-base"></i> <span id="lbl-btn-whatsapp">Enviar Nota por WhatsApp</span>
+          </button>
+        </div>
+
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- VISTA 3: COTIZADOR / PRESUPUESTOS (BOTÓN TARIFAS BASE EN CONFIG)      -->
+  <!-- ===================================================================== -->
+  <section id="vista-presupuestos" class="hidden max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 no-print">
+
+    <div class="lg:col-span-7 space-y-5">
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-calculator text-emerald-400"></i> Cotizador RedOne con Fondo de Garantía (MXN)
+            </h2>
+            <p class="text-xs text-slate-400">Calcula presupuestos con descuento manual 0–100% para tiendas, garantía unificada y categoría Otros.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" id="btn-modo-mostrador-cot" onclick="alternarModoMostradorCotizador()"
+              class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 px-3 py-2 rounded-xl border border-slate-700 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-eye-slash"></i> <span id="lbl-modo-mostrador">Ocultar Costos</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <button type="button" onclick="seleccionarCategoriaPresupuesto('celular')" id="cat-pres-celular"
+            class="bg-emerald-600 text-white border border-emerald-400 rounded-xl py-3 px-2.5 text-xs font-bold shadow-md transition flex flex-col items-center gap-1.5">
+            <i class="fa-solid fa-mobile-screen-button text-base"></i>
+            <span>Celulares</span>
+          </button>
+          <button type="button" onclick="seleccionarCategoriaPresupuesto('laptop')" id="cat-pres-laptop"
+            class="bg-slate-950 text-slate-300 border border-slate-800 hover:border-sky-500/60 rounded-xl py-3 px-2.5 text-xs font-semibold transition flex flex-col items-center gap-1.5">
+            <i class="fa-solid fa-laptop text-base text-sky-400"></i>
+            <span>Laptops / PC</span>
+          </button>
+          <button type="button" onclick="seleccionarCategoriaPresupuesto('impresora')" id="cat-pres-impresora"
+            class="bg-slate-950 text-slate-300 border border-slate-800 hover:border-amber-500/60 rounded-xl py-3 px-2.5 text-xs font-semibold transition flex flex-col items-center gap-1.5">
+            <i class="fa-solid fa-print text-base text-amber-400"></i>
+            <span>Impresoras</span>
+          </button>
+          <button type="button" onclick="seleccionarCategoriaPresupuesto('otros')" id="cat-pres-otros"
+            class="bg-slate-950 text-slate-300 border border-slate-800 hover:border-purple-500/60 rounded-xl py-3 px-2.5 text-xs font-semibold transition flex flex-col items-center gap-1.5">
+            <i class="fa-solid fa-cubes text-base text-purple-400"></i>
+            <span>Otros</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400">1. Equipo y Tipo de Tarifa</span>
+          <div id="selector-tipo-cliente-cot" class="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+            <button type="button" id="btn-tarifa-publico" onclick="seleccionarTipoClienteCot('publico')"
+              class="px-3 py-1 rounded-lg bg-emerald-600 text-white font-semibold transition">
+              Cliente Directo
+            </button>
+            <button type="button" id="btn-tarifa-tienda" onclick="seleccionarTipoClienteCot('tienda')"
+              class="px-3 py-1 rounded-lg text-slate-400 hover:text-white font-semibold transition">
+              Tienda Aliada (-<span id="lbl-porc-tienda">15</span>%)
+            </button>
+          </div>
+        </div>
+
+        <div id="bloque-selector-sucursal-cot" class="hidden bg-sky-950/35 border border-sky-500/40 rounded-xl p-3.5 space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <label data-campo-label="sucursalDestino" class="block text-xs font-bold text-sky-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-store"></i> Sucursal Destino de Tienda Aliada *
+              </label>
+              <span class="text-[11px] text-slate-400">Al convertir en orden se abrirá directamente en esta sucursal.</span>
+            </div>
+            <select id="cot-sucursal-destino" onchange="calcularPresupuesto()"
+              class="bg-slate-950 border border-sky-500/50 rounded-xl px-3.5 py-2 text-sm font-bold text-white focus:outline-none focus:border-sky-400 sm:w-56">
+            </select>
+          </div>
+
+          <div class="pt-2 border-t border-sky-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <label data-campo-label="descuentoTiendaManual" class="block text-xs font-bold text-amber-300">
+                Descuento a Tienda Aliada (0% al 100% sobre costo base)
+              </label>
+              <span class="text-[11px] text-slate-400">Se resta automáticamente del subtotal base (pieza + envío + mano de obra).</span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <input type="number" id="cot-descuento-tienda-manual" min="0" max="100" step="1" value="15"
+                oninput="sincronizarDescuentoTiendaManual(this.value)"
+                class="w-24 bg-slate-950 border border-amber-500/60 rounded-xl px-3 py-2 text-sm font-mono font-bold text-amber-300 text-center focus:outline-none focus:border-amber-400">
+              <span class="text-sm font-bold text-amber-300">%</span>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <button type="button" onclick="setPresetDescuentoTienda(0)" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 px-2 py-1 rounded border border-slate-700">0%</button>
+            <button type="button" onclick="setPresetDescuentoTienda(10)" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 px-2 py-1 rounded border border-slate-700">10%</button>
+            <button type="button" onclick="setPresetDescuentoTienda(15)" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 px-2 py-1 rounded border border-slate-700">15%</button>
+            <button type="button" onclick="setPresetDescuentoTienda(20)" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 px-2 py-1 rounded border border-slate-700">20%</button>
+            <button type="button" onclick="setPresetDescuentoTienda(50)" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 px-2 py-1 rounded border border-slate-700">50%</button>
+            <button type="button" onclick="setPresetDescuentoTienda(100)" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 px-2 py-1 rounded border border-slate-700">100%</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label data-campo-label="cotCliente" id="lbl-cot-cliente" class="block text-xs text-slate-400 mb-1">Nombre Cliente Directo</label>
+            <input type="text" id="cot-cliente" placeholder="Opcional (ej. Luis)" oninput="calcularPresupuesto()"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label data-campo-label="cotMarca" class="block text-xs text-slate-400 mb-1">Marca *</label>
+            <input type="text" id="cot-marca" list="lista-marcas" placeholder="Ej. Samsung, Apple..." oninput="calcularPresupuesto()"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label data-campo-label="cotModelo" class="block text-xs text-slate-400 mb-1">Modelo *</label>
+            <input type="text" id="cot-modelo" placeholder="Ej. iPhone 13 / Moto G54" oninput="calcularPresupuesto()"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+
+        <!-- SUB-BLOQUE A: CELULARES / TABLETS -->
+        <div id="bloque-cot-celular" class="space-y-4 pt-2 border-t border-slate-800/80">
+          <div>
+            <label class="block text-xs font-semibold text-slate-200 mb-2">¿Qué servicio o refacción de celular vas a cotizar?</label>
+            <div class="grid grid-cols-2 gap-2.5">
+              <button type="button" id="btn-modo-cel-pantalla" onclick="seleccionarModoReparacionCelular('pantalla')"
+                class="bg-emerald-500/15 text-emerald-200 border-2 border-emerald-400 rounded-xl p-3 text-left transition flex items-center gap-3">
+                <i class="fa-solid fa-mobile-screen text-xl text-emerald-400"></i>
+                <div>
+                  <span class="block text-xs font-bold text-white">Cambio de Pantalla</span>
+                  <span class="block text-[11px] text-emerald-300">Incell / OLED + Extras Múltiples</span>
+                </div>
+              </button>
+              <button type="button" id="btn-modo-cel-refaccion" onclick="seleccionarModoReparacionCelular('refaccion')"
+                class="bg-slate-950 text-slate-300 border border-slate-800 hover:border-amber-400/60 rounded-xl p-3 text-left transition flex items-center gap-3">
+                <i class="fa-solid fa-plug-circle-bolt text-xl text-amber-400"></i>
+                <div>
+                  <span class="block text-xs font-bold text-white">Otras Reparaciones / Piezas</span>
+                  <span class="block text-[11px] text-slate-400">Centro carga, flex, altavoz + Extras</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-2">Sistema / Plataforma del Equipo:</label>
+            <div class="grid grid-cols-2 gap-3">
+              <button type="button" id="btn-plat-android" onclick="seleccionarPlataformaCelular('android')"
+                class="bg-cyan-500/15 text-cyan-200 border-2 border-cyan-400 rounded-xl p-3 text-left transition flex items-center gap-3">
+                <i class="fa-brands fa-android text-2xl text-cyan-400"></i>
+                <div>
+                  <span class="block text-xs font-bold text-white">Teléfono Android</span>
+                  <span class="block text-[11px] text-cyan-300">Tarifa según gama del equipo</span>
+                </div>
+              </button>
+              <button type="button" id="btn-plat-iphone" onclick="seleccionarPlataformaCelular('iphone')"
+                class="bg-slate-950 text-slate-300 border border-slate-800 hover:border-amber-400/60 rounded-xl p-3 text-left transition flex items-center gap-3">
+                <i class="fa-brands fa-apple text-2xl text-amber-400"></i>
+                <div>
+                  <span class="block text-xs font-bold text-white">Apple / iPhone</span>
+                  <span class="block text-[11px] text-amber-300">Tarifa elevada (Face ID / True Tone)</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <div id="selector-gama-android" class="bg-slate-950/80 border border-cyan-500/30 rounded-xl p-3.5 space-y-2">
+            <label class="block text-xs font-semibold text-cyan-300">Selecciona la Gama del Android (define mano de obra):</label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button type="button" id="gama-android-baja" onclick="seleccionarGamaAndroid('baja')"
+                class="gama-btn bg-cyan-600 text-white border border-cyan-400 rounded-lg p-2.5 text-left transition">
+                <span class="block text-xs font-bold">Gama Baja</span>
+                <span class="block text-[10px] opacity-90">Moto E, Redmi A, A0x/A1x</span>
+                <span class="inline-block mt-1 text-[11px] font-mono font-bold bg-black/30 px-1.5 py-0.5 rounded" id="badge-mo-baja">+$350 M.O.</span>
+              </button>
+              <button type="button" id="gama-android-media" onclick="seleccionarGamaAndroid('media')"
+                class="gama-btn bg-slate-900 text-slate-300 border border-slate-800 hover:border-cyan-500/50 rounded-lg p-2.5 text-left transition">
+                <span class="block text-xs font-bold">Gama Media</span>
+                <span class="block text-[10px] text-slate-400">Redmi Note, A3x/A5x, Poco</span>
+                <span class="inline-block mt-1 text-[11px] font-mono font-bold text-cyan-400 bg-slate-950 px-1.5 py-0.5 rounded" id="badge-mo-media">+$500 M.O.</span>
+              </button>
+              <button type="button" id="gama-android-alta" onclick="seleccionarGamaAndroid('alta')"
+                class="gama-btn bg-slate-900 text-slate-300 border border-slate-800 hover:border-cyan-500/50 rounded-lg p-2.5 text-left transition">
+                <span class="block text-xs font-bold">Gama Alta / Curva</span>
+                <span class="block text-[10px] text-slate-400">Serie S, Edge, Plegables</span>
+                <span class="inline-block mt-1 text-[11px] font-mono font-bold text-cyan-400 bg-slate-950 px-1.5 py-0.5 rounded" id="badge-mo-alta">+$850 M.O.</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="selector-perfil-iphone" class="hidden bg-slate-950/80 border border-amber-500/30 rounded-xl p-3.5 space-y-2">
+            <label class="block text-xs font-semibold text-amber-300">Selecciona la Serie de iPhone (riesgo y programación):</label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button type="button" id="perfil-iphone-home" onclick="seleccionarPerfilIphone('home')"
+                class="iphone-btn bg-slate-900 text-slate-300 border border-slate-800 hover:border-amber-500/50 rounded-lg p-2.5 text-left transition flex flex-col justify-between">
+                <div>
+                  <span class="block text-xs font-bold">Nivel 1 — Gama de entrada</span>
+                  <span class="block text-[10px] opacity-85 mt-0.5 leading-snug">iPhone 7 al 12 normal</span>
+                </div>
+                <span class="inline-block w-fit mt-1.5 text-[11px] font-mono font-bold text-amber-300 bg-slate-950/90 px-1.5 py-0.5 rounded" id="badge-mo-ip-home">+$550 M.O.</span>
+              </button>
+              <button type="button" id="perfil-iphone-faceid" onclick="seleccionarPerfilIphone('faceid')"
+                class="iphone-btn bg-amber-600 text-white border border-amber-400 rounded-lg p-2.5 text-left transition flex flex-col justify-between">
+                <div>
+                  <span class="block text-xs font-bold">Nivel 2 — Estándar / Pro</span>
+                  <span class="block text-[10px] opacity-90 mt-0.5 leading-snug">iPhone 12 Pro al 16 Pro</span>
+                </div>
+                <span class="inline-block w-fit mt-1.5 text-[11px] font-mono font-bold text-amber-300 bg-slate-950/90 px-1.5 py-0.5 rounded" id="badge-mo-ip-faceid">+$800 M.O.</span>
+              </button>
+              <button type="button" id="perfil-iphone-pro" onclick="seleccionarPerfilIphone('pro')"
+                class="iphone-btn bg-slate-900 text-slate-300 border border-slate-800 hover:border-amber-500/50 rounded-lg p-2.5 text-left transition flex flex-col justify-between">
+                <div>
+                  <span class="block text-xs font-bold">Nivel 3 — Serie Pro Max</span>
+                  <span class="block text-[10px] opacity-85 mt-0.5 leading-snug">iPhone 12 Pro Max al 18 Pro Max</span>
+                </div>
+                <span class="inline-block w-fit mt-1.5 text-[11px] font-mono font-bold text-amber-300 bg-slate-950/90 px-1.5 py-0.5 rounded" id="badge-mo-ip-pro">+$1,100 M.O.</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="subpanel-cel-pantalla" class="bg-slate-950/70 border border-slate-800 rounded-xl p-4 space-y-3.5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="text-xs font-semibold text-slate-200">2. Costo de Pantalla y Fondo de Garantía por Calidad</span>
+              <label class="flex items-center gap-1.5 text-xs text-emerald-400 cursor-pointer font-medium">
+                <input type="checkbox" id="cot-doble-opcion" checked onchange="alternarDobleOpcionPantalla()" class="accent-emerald-500">
+                2 calidades (Incell y OLED)
+              </label>
+            </div>
+
+            <div id="grid-pantallas-independientes" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div id="caja-costo-incell" class="bg-cyan-950/20 border border-cyan-500/40 rounded-xl p-3 space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                    <i class="fa-solid fa-mobile-screen"></i> Opción 1: INCELL ($)
+                  </label>
+                  <span class="text-[10px] text-cyan-200 bg-cyan-900/60 px-2 py-0.5 rounded font-semibold">Fondo: +<span class="sync-margen-incell">30</span>%</span>
+                </div>
+                <input type="number" id="cot-costo-incell" min="0" placeholder="Ej. 320" oninput="calcularPresupuesto()"
+                  class="w-full bg-slate-900 border border-cyan-700/60 rounded-xl px-3.5 py-2 text-sm font-semibold text-white focus:outline-none focus:border-cyan-400">
+                <div>
+                  <span class="block text-[11px] text-cyan-200/80 mb-1.5">% Extra Fondo de Garantía (InCell):</span>
+                  <div class="grid grid-cols-5 gap-1">
+                    <button type="button" onclick="seleccionarMargenIncell(0)" id="mrg-incell-0" class="mrg-incell-btn bg-slate-900 text-slate-300 border border-slate-700 rounded-md py-1 text-[11px] font-semibold transition">0%</button>
+                    <button type="button" onclick="seleccionarMargenIncell(20)" id="mrg-incell-20" class="mrg-incell-btn bg-slate-900 text-slate-300 border border-slate-700 rounded-md py-1 text-[11px] font-semibold transition">+20%</button>
+                    <button type="button" onclick="seleccionarMargenIncell(25)" id="mrg-incell-25" class="mrg-incell-btn bg-slate-900 text-slate-300 border border-slate-700 rounded-md py-1 text-[11px] font-semibold transition">+25%</button>
+                    <button type="button" onclick="seleccionarMargenIncell(30)" id="mrg-incell-30" class="mrg-incell-btn bg-cyan-600 text-white border border-cyan-400 rounded-md py-1 text-[11px] font-bold transition shadow">+30%</button>
+                    <button type="button" onclick="seleccionarMargenIncell(50)" id="mrg-incell-50" class="mrg-incell-btn bg-slate-900 text-slate-300 border border-slate-700 rounded-md py-1 text-[11px] font-semibold transition">+50%</button>
+                  </div>
+                </div>
+              </div>
+
+              <div id="caja-costo-oled" class="bg-emerald-950/20 border border-emerald-500/40 rounded-xl p-3 space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-bold text-emerald-300 flex items-center gap-1.5" id="lbl-costo-pieza-principal">
+                    <i class="fa-solid fa-gem"></i> Opción 2: OLED ($)
+                  </label>
+                  <span class="text-[10px] text-emerald-200 bg-emerald-900/60 px-2 py-0.5 rounded font-semibold">Fondo: +<span class="sync-margen-oled">20</span>%</span>
+                </div>
+                <input type="number" id="cot-costo-oled" min="0" placeholder="Ej. 780" oninput="calcularPresupuesto()"
+                  class="w-full bg-slate-900 border border-emerald-700/60 rounded-xl px-3.5 py-2 text-sm font-semibold text-white focus:outline-none focus:border-emerald-400">
+                <div>
+                  <span class="block text-[11px] text-emerald-200/80 mb-1.5" id="lbl-margen-pieza-principal">% Extra Fondo de Garantía (OLED):</span>
+                  <div class="grid grid-cols-5 gap-1">
+                    <button type="button" onclick="seleccionarMargenOled(0)" id="mrg-oled-0" class="mrg-oled-btn bg-slate-900 text-slate-300 border border-slate-700 rounded-md py-1 text-[11px] font-semibold transition">0%</button>
+                    <button type="button" onclick="seleccionarMargenOled(20)" id="mrg-oled-20" class="mrg-oled-btn bg-emerald-600 text-white border border-emerald-400 rounded-md py-1 text-[11px] font-bold transition shadow">+20%</button>
+                    <button type="button" onclick="seleccionarMargenOled(25)" id="mrg-oled-25" class="mrg-oled-btn bg-slate-900 text-slate-300 border border-slate-700 rounded-md py-1 text-[11px] font-semibold transition">+25%</button>
+                    <button type="button" onclick="seleccionarMargenOled(30)" id="mrg-oled-30" class="mrg-oled-btn bg-slate-900 text-slate-300 border border-slate-700 rounded-md py-1 text-[11px] font-semibold transition">+30%</button>
+                    <button type="button" onclick="seleccionarMargenOled(50)" id="mrg-oled-50" class="mrg-oled-btn bg-slate-900 text-slate-300 border border-slate-700 rounded-md py-1 text-[11px] font-semibold transition">+50%</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-1">
+              <label class="block text-xs text-slate-400 mb-1">Envío / Paquetería ($ MXN)</label>
+              <input type="number" id="cot-envio" min="0" value="0" placeholder="0" oninput="calcularPresupuesto()"
+                class="w-full sm:w-1/2 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+            </div>
+          </div>
+
+          <div id="subpanel-cel-refaccion" class="hidden bg-slate-950/70 border border-amber-500/30 rounded-xl p-4 space-y-3">
+            <label class="block text-xs font-semibold text-amber-300">2. Selecciona el Tipo de Reparación / Refacción:</label>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button type="button" onclick="seleccionarSubtipoRefaccion('Centro de carga', this)" id="ref-btn-carga" class="ref-sub-btn bg-amber-600 text-white border border-amber-400 rounded-lg p-2 text-left transition text-xs font-bold">
+                <i class="fa-solid fa-charging-station mr-1"></i> Centro de carga
+              </button>
+              <button type="button" onclick="seleccionarSubtipoRefaccion('Flex de carga / interconexión', this)" id="ref-btn-flex" class="ref-sub-btn bg-slate-900 text-slate-300 border border-slate-800 hover:border-amber-500/50 rounded-lg p-2 text-left transition text-xs font-semibold">
+                <i class="fa-solid fa-ribbon mr-1 text-amber-400"></i> Flex
+              </button>
+              <button type="button" onclick="seleccionarSubtipoRefaccion('Altavoz / Bocina', this)" id="ref-btn-altavoz" class="ref-sub-btn bg-slate-900 text-slate-300 border border-slate-800 hover:border-amber-500/50 rounded-lg p-2 text-left transition text-xs font-semibold">
+                <i class="fa-solid fa-volume-high mr-1 text-amber-400"></i> Altavoz / Bocina
+              </button>
+              <button type="button" onclick="seleccionarSubtipoRefaccion('Micrófono', this)" id="ref-btn-micro" class="ref-sub-btn bg-slate-900 text-slate-300 border border-slate-800 hover:border-amber-500/50 rounded-lg p-2 text-left transition text-xs font-semibold">
+                <i class="fa-solid fa-microphone mr-1 text-amber-400"></i> Micrófono
+              </button>
+              <button type="button" onclick="seleccionarSubtipoRefaccion('Cambio de batería', this)" id="ref-btn-bateria" class="ref-sub-btn bg-slate-900 text-slate-300 border border-slate-800 hover:border-amber-500/50 rounded-lg p-2 text-left transition text-xs font-semibold">
+                <i class="fa-solid fa-battery-three-quarters mr-1 text-amber-400"></i> Batería
+              </button>
+              <button type="button" onclick="seleccionarSubtipoRefaccion('Limpieza y mantenimiento', this)" id="ref-btn-limpieza" class="ref-sub-btn bg-slate-900 text-slate-300 border border-slate-800 hover:border-amber-500/50 rounded-lg p-2 text-left transition text-xs font-semibold">
+                <i class="fa-solid fa-broom mr-1 text-amber-400"></i> Limpieza / Mantto
+              </button>
+              <button type="button" onclick="seleccionarSubtipoRefaccion('Equipo mojado / Baño químico', this)" id="ref-btn-mojado" class="ref-sub-btn bg-slate-900 text-slate-300 border border-slate-800 hover:border-amber-500/50 rounded-lg p-2 text-left transition text-xs font-semibold">
+                <i class="fa-solid fa-droplet mr-1 text-sky-400"></i> Equipo mojado
+              </button>
+              <button type="button" onclick="seleccionarSubtipoRefaccion('Otra refacción / reparación', this)" id="ref-btn-otra" class="ref-sub-btn bg-slate-900 text-slate-300 border border-slate-800 hover:border-amber-500/50 rounded-lg p-2 text-left transition text-xs font-semibold">
+                <i class="fa-solid fa-wrench mr-1 text-amber-400"></i> Otra pieza
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div class="sm:col-span-1">
+                <label class="block text-xs text-slate-300 mb-1">Concepto / Pieza *</label>
+                <input type="text" id="cot-ref-nombre" value="Centro de carga" oninput="calcularPresupuesto()"
+                  class="w-full bg-slate-900 border border-amber-700/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
+              </div>
+              <div>
+                <label class="block text-xs text-amber-300 mb-1">Costo Refacción ($)</label>
+                <input type="number" id="cot-ref-costo" min="0" value="0" placeholder="0" oninput="calcularPresupuesto()"
+                  class="w-full bg-slate-900 border border-amber-700/60 rounded-xl px-3 py-2 text-sm font-semibold text-white focus:outline-none focus:border-amber-400">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Envío / Insumos ($)</label>
+                <input type="number" id="cot-ref-envio" min="0" value="0" placeholder="0" oninput="calcularPresupuesto()"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-800/80 space-y-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <label class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                  <i class="fa-solid fa-shield-halved"></i> % Extra sobre Refacción (Fondo de Garantía)
+                </label>
+                <span class="text-[11px] text-slate-400">Se suma al valor de la pieza</span>
+              </div>
+              <div class="grid grid-cols-5 gap-2">
+                <button type="button" onclick="seleccionarMargenRefaccion(0)" id="mrg-ref-0" class="mrg-ref-btn bg-slate-900 text-slate-300 border border-slate-700 rounded-lg py-1.5 text-xs font-semibold transition">0%</button>
+                <button type="button" onclick="seleccionarMargenRefaccion(20)" id="mrg-ref-20" class="mrg-ref-btn bg-slate-900 text-slate-300 border border-slate-700 rounded-lg py-1.5 text-xs font-semibold transition">+20%</button>
+                <button type="button" onclick="seleccionarMargenRefaccion(25)" id="mrg-ref-25" class="mrg-ref-btn bg-amber-600 text-white border border-amber-400 rounded-lg py-1.5 text-xs font-bold transition shadow">+25%</button>
+                <button type="button" onclick="seleccionarMargenRefaccion(30)" id="mrg-ref-30" class="mrg-ref-btn bg-slate-900 text-slate-300 border border-slate-700 rounded-lg py-1.5 text-xs font-semibold transition">+30%</button>
+                <button type="button" onclick="seleccionarMargenRefaccion(50)" id="mrg-ref-50" class="mrg-ref-btn bg-slate-900 text-slate-300 border border-slate-700 rounded-lg py-1.5 text-xs font-semibold transition">+50%</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-amber-950/20 border border-amber-500/40 rounded-xl p-4 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                  <i class="fa-solid fa-layer-group"></i> Extras de Reparación / Servicios Adicionales
+                </span>
+                <p class="text-[11px] text-slate-400 mt-0.5">Agrega tapa trasera, centro de carga, batería, limpieza, etc.</p>
+              </div>
+              <button type="button" onclick="agregarExtraPresupuesto()" id="btn-agregar-extra-dinamico"
+                class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs shadow transition flex items-center gap-1.5">
+                <i class="fa-solid fa-plus"></i> <span id="lbl-btn-agregar-extra">Agregar Extra</span>
+              </button>
+            </div>
+            <div id="contenedor-extras-dinamicos" class="space-y-3"></div>
+          </div>
+        </div>
+
+        <!-- SUB-BLOQUE B: LAPTOPS / PC -->
+        <div id="bloque-cot-laptop" class="hidden space-y-4 pt-2 border-t border-slate-800/80">
+          <div>
+            <label class="block text-xs font-semibold text-sky-300 mb-2">Tipo de Servicio para Laptop / PC:</label>
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <button type="button" onclick="seleccionarServicioLaptop('display')" id="srv-lap-display"
+                class="lap-srv-btn bg-sky-600 text-white border border-sky-400 rounded-xl p-2.5 text-left transition">
+                <span class="block text-xs font-bold">Cambio Display</span>
+                <span class="block text-[10px] opacity-90">14" / 15.6" / FHD</span>
+              </button>
+              <button type="button" onclick="seleccionarServicioLaptop('mantto')" id="srv-lap-mantto"
+                class="lap-srv-btn bg-slate-950 text-slate-300 border border-slate-800 hover:border-sky-500/50 rounded-xl p-2.5 text-left transition">
+                <span class="block text-xs font-bold">Mantenimiento</span>
+                <span class="block text-[10px] text-slate-400">Limpieza + Pasta</span>
+              </button>
+              <button type="button" onclick="seleccionarServicioLaptop('gamer')" id="srv-lap-gamer"
+                class="lap-srv-btn bg-slate-950 text-slate-300 border border-slate-800 hover:border-sky-500/50 rounded-xl p-2.5 text-left transition">
+                <span class="block text-xs font-bold">Laptop Gamer</span>
+                <span class="block text-[10px] text-slate-400">144Hz / Desarme Pro</span>
+              </button>
+              <button type="button" onclick="seleccionarServicioLaptop('upgrade')" id="srv-lap-upgrade"
+                class="lap-srv-btn bg-slate-950 text-slate-300 border border-slate-800 hover:border-sky-500/50 rounded-xl p-2.5 text-left transition">
+                <span class="block text-xs font-bold">SSD / RAM / OS</span>
+                <span class="block text-[10px] text-slate-400">Optimización</span>
+              </button>
+              <button type="button" onclick="seleccionarServicioLaptop('software')" id="srv-lap-software"
+                class="lap-srv-btn bg-slate-950 text-slate-300 border border-slate-800 hover:border-sky-500/50 rounded-xl p-2.5 text-left transition">
+                <span class="block text-xs font-bold">Inst. Software</span>
+                <span class="block text-[10px] text-sky-300">Office, AutoCAD...</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="bloque-software-laptop" class="hidden bg-sky-950/25 border border-sky-500/40 rounded-xl p-3 space-y-2">
+            <label class="block text-xs font-bold text-sky-300">Programas / Software a instalar:</label>
+            <div class="flex flex-wrap gap-1.5">
+              <button type="button" onclick="setSoftwareLaptop('Instalación de Paquetería Office')" class="text-[11px] bg-slate-900 hover:bg-sky-900/50 text-sky-200 px-2.5 py-1 rounded-lg border border-sky-500/30">Office</button>
+              <button type="button" onclick="setSoftwareLaptop('Instalación de Office + Photoshop')" class="text-[11px] bg-slate-900 hover:bg-sky-900/50 text-sky-200 px-2.5 py-1 rounded-lg border border-sky-500/30">Office + Photoshop</button>
+              <button type="button" onclick="setSoftwareLaptop('Instalación de AutoCAD')" class="text-[11px] bg-slate-900 hover:bg-sky-900/50 text-sky-200 px-2.5 py-1 rounded-lg border border-sky-500/30">AutoCAD</button>
+              <button type="button" onclick="setSoftwareLaptop('Instalación de Suite Adobe / Diseño')" class="text-[11px] bg-slate-900 hover:bg-sky-900/50 text-sky-200 px-2.5 py-1 rounded-lg border border-sky-500/30">Adobe / Diseño</button>
+            </div>
+            <input type="text" id="cot-lap-software-desc" value="Instalación de Paquetería Office" oninput="calcularPresupuesto()"
+              class="w-full bg-slate-900 border border-sky-500/50 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-sky-400">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-950/70 border border-slate-800 rounded-xl p-4">
+            <div>
+              <label class="block text-xs text-slate-300 mb-1">Costo Refacción / SSD ($)</label>
+              <input type="number" id="cot-lap-pieza" min="0" placeholder="0" oninput="calcularPresupuesto()"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-sm font-semibold text-white focus:outline-none focus:border-sky-400">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-300 mb-1">Envío / Insumos ($)</label>
+              <input type="number" id="cot-lap-envio" min="0" value="0" oninput="calcularPresupuesto()"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-sky-400">
+            </div>
+            <div>
+              <label class="block text-xs text-sky-300 mb-1">Mano de Obra ($ MXN)</label>
+              <input type="number" id="cot-lap-mo" min="0" value="550" oninput="calcularPresupuesto()"
+                class="w-full bg-slate-900 border border-sky-700/60 rounded-xl px-3.5 py-2 text-sm font-bold text-sky-300 focus:outline-none focus:border-sky-400">
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-BLOQUE C: IMPRESORAS -->
+        <div id="bloque-cot-impresora" class="hidden space-y-4 pt-2 border-t border-slate-800/80">
+          <div>
+            <label class="block text-xs font-semibold text-amber-300 mb-2">Tipo de Servicio (Impresoras):</label>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button type="button" onclick="seleccionarServicioImpresora('reset')" id="srv-imp-reset" class="imp-srv-btn bg-amber-600 text-white border border-amber-400 rounded-xl p-2.5 text-left transition">
+                <span class="block text-xs font-bold">Reset Software</span>
+                <span class="block text-[10px] opacity-90">Almohadillas Epson</span>
+              </button>
+              <button type="button" onclick="seleccionarServicioImpresora('caja')" id="srv-imp-caja" class="imp-srv-btn bg-slate-950 text-slate-300 border border-slate-800 hover:border-amber-500/50 rounded-xl p-2.5 text-left transition">
+                <span class="block text-xs font-bold">Reset + Caja Ext.</span>
+                <span class="block text-[10px] text-slate-400">Manguera y depósito</span>
+              </button>
+              <button type="button" onclick="seleccionarServicioImpresora('cabezal')" id="srv-imp-cabezal" class="imp-srv-btn bg-slate-950 text-slate-300 border border-slate-800 hover:border-amber-500/50 rounded-xl p-2.5 text-left transition">
+                <span class="block text-xs font-bold">Mantto / Cabezal</span>
+                <span class="block text-[10px] text-slate-400">Purga y destape</span>
+              </button>
+              <button type="button" onclick="seleccionarServicioImpresora('otro')" id="srv-imp-otro" class="imp-srv-btn bg-slate-950 text-slate-300 border border-slate-800 hover:border-amber-500/50 rounded-xl p-2.5 text-left transition">
+                <span class="block text-xs font-bold">Otro Servicio</span>
+                <span class="block text-[10px] text-slate-400">Rodillos / Alimentador</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-950/70 border border-slate-800 rounded-xl p-4">
+            <div>
+              <label class="block text-xs text-slate-300 mb-1">Costo Refacción / Caja ($)</label>
+              <input type="number" id="cot-imp-pieza" min="0" value="0" oninput="calcularPresupuesto()"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-sm font-semibold text-white focus:outline-none focus:border-amber-400">
+            </div>
+            <div>
+              <label class="block text-xs text-amber-300 mb-1">Mano de Obra ($ MXN)</label>
+              <input type="number" id="cot-imp-mo" min="0" value="300" oninput="calcularPresupuesto()"
+                class="w-full bg-slate-900 border border-amber-700/60 rounded-xl px-3.5 py-2 text-sm font-bold text-amber-300 focus:outline-none focus:border-amber-400">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-300 mb-1">Descripción breve</label>
+              <input type="text" id="cot-imp-desc" value="Reset de almohadillas por software" oninput="calcularPresupuesto()"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-BLOQUE D: MÓDULO "OTROS" -->
+        <div id="bloque-cot-otros" class="hidden space-y-4 pt-2 border-t border-slate-800/80">
+          <div class="bg-purple-950/20 border border-purple-500/40 rounded-xl p-4 space-y-3">
+            <label class="block text-xs font-bold text-purple-300">
+              <i class="fa-solid fa-cubes mr-1"></i> Tipo de Equipo / Servicio Manual ("Otros") *
+            </label>
+            <div class="flex flex-wrap gap-1.5">
+              <button type="button" onclick="setAtajoCotOtros('Consola de videojuegos', 250, 450)" class="text-[11px] bg-slate-900 hover:bg-purple-900/50 text-purple-200 px-2.5 py-1 rounded-lg border border-purple-500/30">Consola</button>
+              <button type="button" onclick="setAtajoCotOtros('Cargador / Fuente de poder', 0, 220)" class="text-[11px] bg-slate-900 hover:bg-purple-900/50 text-purple-200 px-2.5 py-1 rounded-lg border border-purple-500/30">Cargador</button>
+              <button type="button" onclick="setAtajoCotOtros('Reparación de placa / componente', 150, 500)" class="text-[11px] bg-slate-900 hover:bg-purple-900/50 text-purple-200 px-2.5 py-1 rounded-lg border border-purple-500/30">Placa</button>
+              <button type="button" onclick="setAtajoCotOtros('Bocina / Equipo de sonido', 120, 300)" class="text-[11px] bg-slate-900 hover:bg-purple-900/50 text-purple-200 px-2.5 py-1 rounded-lg border border-purple-500/30">Bocina</button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs text-slate-300 mb-1">Equipo / Concepto *</label>
+                <input type="text" id="cot-otros-concepto" value="Consola / Equipo diverso" oninput="calcularPresupuesto()"
+                  class="w-full bg-slate-900 border border-purple-600/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-400">
+              </div>
+              <div>
+                <label class="block text-xs text-purple-300 mb-1">Costo Pieza / Insumo ($)</label>
+                <input type="number" id="cot-otros-pieza" min="0" value="0" oninput="calcularPresupuesto()"
+                  class="w-full bg-slate-900 border border-purple-600/60 rounded-xl px-3 py-2 text-sm font-semibold text-white focus:outline-none focus:border-purple-400">
+              </div>
+              <div>
+                <label class="block text-xs text-purple-300 mb-1">Mano de Obra ($ MXN)</label>
+                <input type="number" id="cot-otros-mo" min="0" value="350" oninput="calcularPresupuesto()"
+                  class="w-full bg-slate-900 border border-purple-600/60 rounded-xl px-3 py-2 text-sm font-bold text-purple-300 focus:outline-none focus:border-purple-400">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-3.5 space-y-2.5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <label data-campo-label="descuentoCliente" class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+              <i class="fa-solid fa-tags text-amber-400"></i> Descuento Especial al Cliente (Todas las categorías)
+            </label>
+            <span id="badge-garantia-actual" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+              <i class="fa-solid fa-certificate mr-1"></i> Garantía al 100%
+            </span>
+          </div>
+
+          <div class="grid grid-cols-5 gap-2">
+            <button type="button" onclick="seleccionarDescuentoCliente(0)" id="desc-btn-0" class="desc-btn bg-slate-800 text-white border border-slate-500 rounded-lg py-1.5 text-xs font-bold transition">Sin desc.</button>
+            <button type="button" onclick="seleccionarDescuentoCliente(10)" id="desc-btn-10" class="desc-btn bg-slate-900 text-slate-300 border border-slate-700 rounded-lg py-1.5 text-xs font-semibold transition">-10%</button>
+            <button type="button" onclick="seleccionarDescuentoCliente(20)" id="desc-btn-20" class="desc-btn bg-slate-900 text-amber-300 border border-slate-700 rounded-lg py-1.5 text-xs font-semibold transition">-20%</button>
+            <button type="button" onclick="seleccionarDescuentoCliente(30)" id="desc-btn-30" class="desc-btn bg-slate-900 text-amber-300 border border-slate-700 rounded-lg py-1.5 text-xs font-semibold transition">-30%</button>
+            <button type="button" onclick="seleccionarDescuentoCliente(40)" id="desc-btn-40" class="desc-btn bg-slate-900 text-amber-300 border border-slate-700 rounded-lg py-1.5 text-xs font-semibold transition">-40%</button>
+          </div>
+
+          <div id="alerta-garantia-reducida" class="hidden bg-amber-500/15 border border-amber-500/50 rounded-xl p-3 text-xs text-amber-200 flex items-start gap-2.5">
+            <i class="fa-solid fa-triangle-exclamation text-amber-400 text-base mt-0.5 shrink-0"></i>
+            <div>
+              <p class="font-bold text-amber-300 uppercase text-[11px]">Aviso de Garantía al 50% por Descuento Aplicado</p>
+              <p class="text-[11px] leading-relaxed mt-0.5">
+                A partir de este momento, el cliente <strong>gozará solo del 50% de garantía</strong> en caso de que falle la pieza o servicio. El cliente cubre el 50% del costo de reposición y no aplica garantía del 100%.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800/80">
+          <div id="caja-mo-celular">
+            <label class="block text-xs text-slate-400 mb-1">Mano de Obra Base ($ MXN) <span class="text-[10px] text-emerald-400">(editable)</span></label>
+            <input type="number" id="cot-mo-manual" min="0" value="350" oninput="calcularPresupuesto()"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Tiempo estimado de entrega</label>
+            <select id="cot-tiempo-entrega" onchange="calcularPresupuesto()"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+              <option value="Mismo día (2 a 4 horas)">Mismo día (2 a 4 horas)</option>
+              <option value="24 horas (pieza bajo pedido)">24 horas (pieza bajo pedido)</option>
+              <option value="2 a 3 días hábiles">2 a 3 días hábiles</option>
+              <option value="Inmediato (1 hora)">Inmediato (1 hora)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLUMNA DERECHA: RESUMEN DE COTIZACIÓN -->
+    <div class="lg:col-span-5 space-y-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl sticky top-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 block">Presupuesto Estimado</span>
+            <span class="text-[11px] text-slate-400" id="lbl-resumen-equipo">Celular Android — Gama Baja</span>
+          </div>
+          <span id="badge-tipo-tarifa-resumen" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+            Precio Público
+          </span>
+        </div>
+
+        <div id="contenedor-resultados-cotizacion" class="space-y-3">
+          <div id="card-precio-incell" class="bg-cyan-950/30 border-2 border-cyan-500/60 rounded-2xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold uppercase text-cyan-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-mobile-screen"></i> Opción 1: Pantalla INCELL
+              </span>
+              <span class="text-[10px] bg-cyan-500/20 text-cyan-200 px-2 py-0.5 rounded">Económica</span>
+            </div>
+            <div class="flex items-baseline justify-between pt-1">
+              <div>
+                <span class="text-2xl font-black text-white" id="res-total-incell">$0 MXN</span>
+                <span id="res-tachado-incell" class="hidden text-xs text-slate-400 line-through ml-1.5">$0</span>
+              </div>
+              <span class="text-xs text-slate-300">Anticipo (50%): <strong class="text-cyan-300" id="res-anticipo-incell">$0</strong></span>
+            </div>
+            <div class="desglose-interno pt-2 border-t border-cyan-900/50 space-y-1 text-[11px] text-slate-400">
+              <div class="flex justify-between">
+                <span>Costo real pieza+envío: <strong class="text-rose-400" id="int-costo-incell">$0</strong></span>
+                <span>Fondo garantía (+<span class="sync-margen-incell">30</span>%): <strong class="text-sky-300" id="int-fondo-incell">$0</strong></span>
+              </div>
+              <div class="flex justify-between">
+                <span>Mano de obra: <strong class="text-slate-200" id="int-mo-incell">$0</strong></span>
+                <span>Utilidad Total: <strong class="text-emerald-400" id="int-ganancia-incell">$0</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <div id="card-precio-principal" class="bg-emerald-950/30 border-2 border-emerald-500/70 rounded-2xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold uppercase text-emerald-300 flex items-center gap-1.5" id="lbl-titulo-card-principal">
+                <i class="fa-solid fa-gem"></i> Opción 2: Pantalla OLED / Original
+              </span>
+              <span class="text-[10px] bg-emerald-500/20 text-emerald-200 px-2 py-0.5 rounded" id="badge-calidad-principal">Recomendada</span>
+            </div>
+            <div class="flex items-baseline justify-between pt-1">
+              <div>
+                <span class="text-3xl font-black text-white" id="res-total-principal">$0 MXN</span>
+                <span id="res-tachado-principal" class="hidden text-xs text-slate-400 line-through ml-1.5">$0</span>
+              </div>
+              <span class="text-xs text-slate-300">Anticipo (50%): <strong class="text-emerald-300" id="res-anticipo-principal">$0</strong></span>
+            </div>
+            <div class="desglose-interno pt-2 border-t border-emerald-900/50 space-y-1 text-[11px] text-slate-400">
+              <div class="flex justify-between">
+                <span>Costo real pieza+envío: <strong class="text-rose-400" id="int-costo-principal">$0</strong></span>
+                <span>Fondo garantía (+<span class="sync-margen-principal">20</span>%): <strong class="text-sky-300" id="int-fondo-principal">$0</strong></span>
+              </div>
+              <div class="flex justify-between">
+                <span>Mano de obra: <strong class="text-slate-200" id="int-mo-principal">$0</strong></span>
+                <span>Utilidad Total: <strong class="text-emerald-400" id="int-ganancia-principal">$0</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <div id="card-precio-extras-multiples" class="hidden bg-amber-950/30 border-2 border-amber-500/70 rounded-2xl p-4 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold uppercase text-amber-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-layer-group"></i> Extras Agregados (<span id="res-count-extras">0</span>)
+              </span>
+              <span class="text-[10px] bg-amber-500/20 text-amber-200 px-2 py-0.5 rounded">Adicionales</span>
+            </div>
+            <div id="res-lista-extras-detalle" class="space-y-1 text-xs border-b border-amber-900/50 pb-2"></div>
+            <div class="flex items-baseline justify-between">
+              <div>
+                <span class="text-xs text-amber-200 block">Suma Solo Extras:</span>
+                <span class="text-xl font-black text-white" id="res-total-extras">$0 MXN</span>
+              </div>
+              <span class="text-xs text-slate-300">Anticipo Extras: <strong class="text-amber-300" id="res-anticipo-extras">$0</strong></span>
+            </div>
+            <div class="bg-slate-950/75 border border-amber-500/30 rounded-xl p-2.5 space-y-1 text-[11px]">
+              <div id="fila-combo-incell" class="flex justify-between text-cyan-200">
+                <span>Paquete INCELL + Todos los Extras:</span>
+                <strong id="res-combo-incell">$0 MXN</strong>
+              </div>
+              <div class="flex justify-between text-emerald-200">
+                <span id="lbl-combo-principal">Combo OLED + Todos los Extras:</span>
+                <strong id="res-combo-principal">$0 MXN</strong>
+              </div>
+            </div>
+            <div class="desglose-interno pt-2 border-t border-amber-900/50 space-y-1 text-[11px] text-slate-400">
+              <div class="flex justify-between">
+                <span>Costo piezas extras: <strong class="text-rose-400" id="int-costo-extras">$0</strong></span>
+                <span>M.O. extras: <strong class="text-slate-200" id="int-mo-extras">$0</strong></span>
+              </div>
+              <div class="flex justify-between">
+                <span>Utilidad solo extras: <strong class="text-emerald-400" id="int-ganancia-extras">$0</strong></span>
+                <span>Utilidad combo total: <strong class="text-emerald-300" id="int-ganancia-combo">$0</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="box-garantia-resumen" class="bg-emerald-950/30 border border-emerald-500/40 rounded-xl p-3 text-[11px] text-emerald-200 space-y-1">
+          <p class="font-bold flex items-center gap-1.5" id="lbl-titulo-garantia-resumen">
+            <i class="fa-solid fa-shield-halved text-emerald-400"></i> Garantía del 100% Incluida
+          </p>
+          <p class="text-slate-300" id="lbl-texto-garantia-resumen">
+            Cubre defectos de fábrica o falla de la pieza sin costo adicional. (No aplica por golpes, humedad o presión).
+          </p>
+        </div>
+
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-[11px] text-slate-400 space-y-1">
+          <p><i class="fa-regular fa-clock text-emerald-400 mr-1.5"></i><strong>Entrega estimada:</strong> <span id="res-tiempo-entrega" class="text-slate-200">Mismo día (2 a 4 horas)</span></p>
+          <p><i class="fa-solid fa-hand-holding-dollar text-emerald-400 mr-1.5"></i><strong>Anticipo sugerido:</strong> 50% para cubrir el costo de la refacción al pedirla.</p>
+        </div>
+
+        <div class="space-y-2.5 pt-1">
+          <button type="button" onclick="enviarCotizacionWhatsApp()"
+            class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2 text-sm">
+            <i class="fa-brands fa-whatsapp text-base"></i> Enviar Presupuesto por WhatsApp
+          </button>
+
+          <div id="botones-convertir-orden" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button type="button" id="btn-convertir-incell" onclick="convertirPresupuestoAOrden('incell')"
+              class="bg-cyan-600/20 hover:bg-cyan-600 text-cyan-200 hover:text-white border border-cyan-500/50 font-semibold py-2.5 px-3 rounded-xl transition text-xs flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-arrow-right-to-bracket"></i> Crear Orden INCELL
+            </button>
+            <button type="button" id="btn-convertir-principal" onclick="convertirPresupuestoAOrden('principal')"
+              class="bg-red-600 hover:bg-red-500 text-white font-semibold py-2.5 px-3 rounded-xl shadow-md transition text-xs flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-arrow-right-to-bracket"></i> <span id="lbl-btn-convertir-principal">Crear Orden OLED</span>
+            </button>
+          </div>
+
+          <div id="botones-convertir-extra" class="hidden grid-cols-1 sm:grid-cols-2 gap-2">
+            <button type="button" onclick="convertirPresupuestoAOrden('extra')"
+              class="bg-amber-600/20 hover:bg-amber-600 text-amber-200 hover:text-white border border-amber-500/50 font-semibold py-2.5 px-3 rounded-xl transition text-xs flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-arrow-right-to-bracket"></i> Solo Orden Extras
+            </button>
+            <button type="button" onclick="convertirPresupuestoAOrden('combo')"
+              class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 px-3 rounded-xl shadow-md transition text-xs flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-layer-group"></i> <span id="lbl-btn-convertir-combo">Orden OLED + Extras</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- VISTA 4: CORTES Y LIQUIDACIÓN DE TIENDAS ALIADAS                      -->
+  <!-- ===================================================================== -->
+  <section id="vista-cortes" class="hidden max-w-7xl mx-auto p-4 md:p-6 space-y-5">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-5 no-print">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider bg-sky-500/15 text-sky-300 border border-sky-500/30 px-2.5 py-0.5 rounded-full">
+            Liquidación por Corte
+          </span>
+          <h2 class="text-lg font-bold text-white mt-1.5">Equipos Entregados Pendientes de Pago por Tienda</h2>
+          <p class="text-xs text-slate-400">Selecciona los equipos liquidados en el corte y márcalos como pagados, o descarga el estado de cuenta en Excel/CSV o PDF.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="corte-filtro-tienda" onchange="renderizarVistaCortes()"
+            class="bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm font-bold text-white focus:outline-none focus:border-sky-500">
+            <option value="TODAS">Todas las tiendas aliadas</option>
+          </select>
+
+          <button type="button" onclick="exportarCorteExcelCSV()"
+            class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition flex items-center gap-1.5">
+            <i class="fa-solid fa-file-excel"></i> Descargar Excel (CSV)
+          </button>
+
+          <button type="button" onclick="imprimirReporteCortePDF()"
+            class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs border border-slate-700 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-file-pdf text-rose-400"></i> Descargar / Imprimir PDF
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-3">
+          <label class="flex items-center gap-2 text-xs font-bold text-slate-200 cursor-pointer">
+            <input type="checkbox" id="chk-corte-todos" onchange="alternarSeleccionTodosCorte(this.checked)" class="accent-sky-500 w-4 h-4">
+            <span>Seleccionar todos los mostrados</span>
+          </label>
+          <span class="text-xs text-slate-400">
+            Seleccionados: <strong id="corte-count-seleccionados" class="text-sky-300">0</strong> ·
+            Monto seleccionado: <strong id="corte-monto-seleccionado" class="text-emerald-400">$0 MXN</strong>
+          </span>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="text-right">
+            <span class="block text-[10px] text-slate-400 uppercase">Total Adeudado Mostrado</span>
+            <span id="corte-total-adeudo" class="text-base font-black text-amber-300">$0 MXN</span>
+          </div>
+          <button type="button" onclick="marcarSeleccionadosComoPagados()"
+            class="bg-sky-600 hover:bg-sky-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-lg transition flex items-center gap-1.5">
+            <i class="fa-solid fa-check-double"></i> Marcar como Pagados
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-950 text-slate-400 uppercase text-[11px] border-b border-slate-800">
+            <tr>
+              <th class="p-3 w-10">Sel.</th>
+              <th class="p-3">Folio / Nota</th>
+              <th class="p-3">Tienda</th>
+              <th class="p-3">Equipo</th>
+              <th class="p-3">Servicio</th>
+              <th class="p-3">Fecha Entregado</th>
+              <th class="p-3 text-right">Monto a Cobrar</th>
+            </tr>
+          </thead>
+          <tbody id="corte-tabla-body" class="divide-y divide-slate-800/80 bg-slate-900/60"></tbody>
+        </table>
+      </div>
+
+      <div class="pt-4 border-t border-slate-800 space-y-2">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-clock-rotate-left text-emerald-400"></i> Equipos Ya Liquidados / Pagados en Corte
+        </h3>
+        <div id="corte-lista-pagados" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+      </div>
+    </div>
+
+    <div id="area-impresion-reporte" class="hidden bg-white text-black p-6 rounded-2xl border border-slate-300">
+      <div class="flex items-center justify-between border-b-2 border-black pb-3 mb-4">
+        <div>
+          <h2 class="text-xl font-black italic">REDONE — REPORTE DE CORTE PENDIENTE DE PAGO</h2>
+          <p class="text-xs text-gray-700" id="pdf-corte-subtitulo">Tienda: Todas las tiendas aliadas</p>
+        </div>
+        <div class="text-right text-xs">
+          <p><strong>Fecha de emisión:</strong> <span id="pdf-corte-fecha"></span></p>
+          <p class="font-bold text-sm mt-1">TOTAL ADEUDADO: <span id="pdf-corte-total">$0 MXN</span></p>
+        </div>
+      </div>
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="border-b border-black bg-gray-100">
+            <th class="py-2 px-2">Folio RN</th>
+            <th class="py-2 px-2">Nota Tienda</th>
+            <th class="py-2 px-2">Tienda</th>
+            <th class="py-2 px-2">Equipo</th>
+            <th class="py-2 px-2">Reparación</th>
+            <th class="py-2 px-2 text-right">Monto MXN</th>
+          </tr>
+        </thead>
+        <tbody id="pdf-corte-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- VISTA 5: PANEL CENTRAL DE CONFIGURACIÓN Y CONTROL GENERAL (NUEVO)     -->
+  <!-- ===================================================================== -->
+  <section id="vista-configuracion" class="hidden max-w-7xl mx-auto p-4 md:p-6 space-y-6 no-print">
+
+    <!-- Encabezado del Panel -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center flex-wrap gap-2">
+          <span class="text-xs font-bold uppercase tracking-wider bg-sky-500/15 text-sky-300 border border-sky-500/30 px-2.5 py-0.5 rounded-full">
+            <i class="fa-solid fa-sliders mr-1"></i> Centro de Administración RedOne
+          </span>
+          <span class="text-xs text-slate-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full">
+            Guardado automático local (MXN)
+          </span>
+        </div>
+        <h1 class="text-lg md:text-xl font-bold text-white mt-1.5">Panel de Configuración y Control General</h1>
+        <p class="text-xs text-slate-400">Administra empleados, tiendas aliadas, PINes de acceso, nombres del sistema, tarifas base, inventario y respaldos desde un solo lugar.</p>
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <button type="button" onclick="exportarRespaldoTotalJSON()"
+          class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs shadow transition flex items-center gap-1.5">
+          <i class="fa-solid fa-download"></i> Exportar Respaldo (.JSON)
+        </button>
+        <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3.5 py-2.5 rounded-xl text-xs border border-slate-700 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-upload text-sky-400"></i> Importar Respaldo
+          <input type="file" accept=".json,application/json" class="hidden" onchange="importarRespaldoTotalJSON(event)">
+        </label>
+      </div>
+    </div>
+
+    <!-- Navegación Interna de Secciones del Panel -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-2 shadow-lg flex flex-wrap gap-1.5 text-xs">
+      <button type="button" id="cfg-tab-general" onclick="cambiarSubtabConfig('general')"
+        class="cfg-subtab px-3.5 py-2.5 rounded-xl bg-sky-600 text-white font-bold transition flex items-center gap-1.5">
+        <i class="fa-solid fa-gauge-high"></i> Control General y Tarifas
+      </button>
+      <button type="button" id="cfg-tab-empleados" onclick="cambiarSubtabConfig('empleados')"
+        class="cfg-subtab px-3.5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 font-semibold transition flex items-center gap-1.5">
+        <i class="fa-solid fa-users-gear text-emerald-400"></i> Empleados (<span id="cfg-count-empleados">0</span>)
+      </button>
+      <button type="button" id="cfg-tab-tiendas" onclick="cambiarSubtabConfig('tiendas')"
+        class="cfg-subtab px-3.5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 font-semibold transition flex items-center gap-1.5">
+        <i class="fa-solid fa-store text-amber-400"></i> Tiendas Aliadas (<span id="cfg-count-tiendas">0</span>)
+      </button>
+      <button type="button" id="cfg-tab-pines" onclick="cambiarSubtabConfig('pines')"
+        class="cfg-subtab px-3.5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 font-semibold transition flex items-center gap-1.5">
+        <i class="fa-solid fa-key text-red-400"></i> PINes y Seguridad
+      </button>
+      <button type="button" id="cfg-tab-inventario" onclick="cambiarSubtabConfig('inventario')"
+        class="cfg-subtab px-3.5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 font-semibold transition flex items-center gap-1.5">
+        <i class="fa-solid fa-boxes-stacked text-purple-400"></i> Inventario (<span id="cfg-count-inventario">0</span>)
+      </button>
+      <button type="button" id="cfg-tab-nombres" onclick="cambiarSubtabConfig('nombres')"
+        class="cfg-subtab px-3.5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 font-semibold transition flex items-center gap-1.5">
+        <i class="fa-solid fa-tags text-cyan-400"></i> Nombres y Etiquetas
+      </button>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- SUB-PANEL 1: CONTROL GENERAL, TARIFAS BASE Y MANTENIMIENTO          -->
+    <!-- =================================================================== -->
+    <div id="cfg-panel-general" class="space-y-5">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Identidad del Taller -->
+        <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+          <h2 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+            <i class="fa-solid fa-building text-red-400"></i> Datos Generales del Taller y Ticket
+          </h2>
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="block text-slate-300 mb-1">Nombre Comercial</label>
+              <input type="text" id="cfg-negocio-nombre" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white font-bold focus:outline-none focus:border-sky-500">
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Subtítulo / Especialidad en Ticket</label>
+              <input type="text" id="cfg-negocio-subtitulo" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Ubicación / Sucursal Matriz</label>
+              <input type="text" id="cfg-negocio-direccion" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Teléfono / WhatsApp Principal Taller</label>
+              <input type="tel" id="cfg-negocio-telefono" maxlength="10" placeholder="10 dígitos" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Cláusula / Pie de Garantía en Ticket</label>
+              <textarea id="cfg-negocio-garantia" rows="3" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-sky-500"></textarea>
+            </div>
+            <button type="button" onclick="guardarConfiguracionGeneralNegocio()"
+              class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-floppy-disk"></i> Guardar Datos Generales
+            </button>
+          </div>
+        </div>
+
+        <!-- Tarifas Base de Mano de Obra y Fondo de Garantía (trasladadas aquí) -->
+        <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-coins text-emerald-400"></i> Tarifas Base de Mano de Obra y Fondo de Garantía ($ MXN)
+            </h2>
+            <button type="button" onclick="restaurarTarifasDefault(); cargarValoresTarifasEnPanel();"
+              class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700">
+              Restaurar Default
+            </button>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div class="bg-emerald-950/30 border border-emerald-700/50 rounded-xl p-3 space-y-2">
+              <p class="font-bold text-emerald-300 uppercase tracking-wider">Margen de Recuperación / Fondo de Garantía</p>
+              <div class="grid grid-cols-3 gap-2.5">
+                <div>
+                  <label class="block text-cyan-300 mb-1">% Pantalla InCell</label>
+                  <input type="number" id="trf-margen-incell" min="0" max="100" class="w-full bg-slate-950 border border-cyan-700/60 rounded-lg px-2.5 py-2 text-cyan-300 font-bold">
+                </div>
+                <div>
+                  <label class="block text-emerald-300 mb-1">% Pantalla OLED</label>
+                  <input type="number" id="trf-margen-oled" min="0" max="100" class="w-full bg-slate-950 border border-emerald-700/60 rounded-lg px-2.5 py-2 text-emerald-300 font-bold">
+                </div>
+                <div>
+                  <label class="block text-slate-300 mb-1">Desc. Tienda Default (%)</label>
+                  <input type="number" id="trf-desc-tienda" min="0" max="100" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-sky-400 font-bold">
+                </div>
+              </div>
+            </div>
+
+            <p class="font-bold text-cyan-400 uppercase tracking-wider">Celulares Android (Mano de Obra)</p>
+            <div class="grid grid-cols-3 gap-2.5">
+              <div>
+                <label class="block text-slate-300 mb-1">Gama Baja</label>
+                <input type="number" id="trf-android-baja" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white font-semibold">
+              </div>
+              <div>
+                <label class="block text-slate-300 mb-1">Gama Media</label>
+                <input type="number" id="trf-android-media" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white font-semibold">
+              </div>
+              <div>
+                <label class="block text-slate-300 mb-1">Gama Alta / Curva</label>
+                <input type="number" id="trf-android-alta" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white font-semibold">
+              </div>
+            </div>
+
+            <p class="font-bold text-amber-400 uppercase tracking-wider">Apple / iPhone (Mano de Obra)</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label class="block text-slate-300 mb-1">Nivel 1 · Gama entrada</label>
+                <input type="number" id="trf-iphone-home" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white font-semibold">
+              </div>
+              <div>
+                <label class="block text-slate-300 mb-1">Nivel 2 · Estándar / Pro</label>
+                <input type="number" id="trf-iphone-faceid" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white font-semibold">
+              </div>
+              <div>
+                <label class="block text-slate-300 mb-1">Nivel 3 · Serie Pro Max</label>
+                <input type="number" id="trf-iphone-pro" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white font-semibold">
+              </div>
+            </div>
+
+            <p class="font-bold text-sky-400 uppercase tracking-wider">Laptops e Impresoras</p>
+            <div class="grid grid-cols-3 gap-2.5">
+              <div>
+                <label class="block text-slate-300 mb-1">Display Laptop</label>
+                <input type="number" id="trf-laptop-display" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white font-semibold">
+              </div>
+              <div>
+                <label class="block text-slate-300 mb-1">Mantto. Laptop</label>
+                <input type="number" id="trf-laptop-mantto" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white font-semibold">
+              </div>
+              <div>
+                <label class="block text-slate-300 mb-1">Reset Impresora</label>
+                <input type="number" id="trf-imp-reset" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white font-semibold">
+              </div>
+            </div>
+
+            <button type="button" onclick="guardarTarifasDesdePanelConfig()"
+              class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-floppy-disk"></i> Guardar Tarifas Base en Cotizador
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Zona de Mantenimiento y Datos de Prueba -->
+      <div class="bg-slate-900 border border-amber-500/30 rounded-2xl p-5 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h3 class="text-sm font-bold text-amber-300 flex items-center gap-2">
+            <i class="fa-solid fa-database"></i> Mantenimiento de Base de Datos Local
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">Restaura las 10 órdenes de demostración iniciales si estás realizando pruebas.</p>
+        </div>
+        <button type="button" onclick="restaurarDatosEjemplo()"
+          class="bg-slate-800 hover:bg-amber-600 text-amber-300 hover:text-white font-bold px-4 py-2.5 rounded-xl text-xs border border-slate-700 transition shrink-0">
+          <i class="fa-solid fa-rotate-left mr-1.5"></i> Restaurar Órdenes Demo
+        </button>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- SUB-PANEL 2: ALTA, BAJA Y EDICIÓN DE EMPLEADOS                      -->
+    <!-- =================================================================== -->
+    <div id="cfg-panel-empleados" class="hidden grid-cols-1 lg:grid-cols-12 gap-5">
+      <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 h-fit">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h2 id="titulo-form-empleado" class="text-sm font-bold text-emerald-400 flex items-center gap-2">
+            <i class="fa-solid fa-user-plus"></i> Dar de Alta Nuevo Empleado
+          </h2>
+          <button type="button" id="btn-cancelar-edit-empleado" onclick="limpiarFormEmpleado()" class="hidden text-xs text-slate-400 hover:text-white underline">
+            Cancelar
+          </button>
+        </div>
+        <input type="hidden" id="emp-id-edit" value="">
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block text-slate-300 mb-1">Nombre completo del empleado *</label>
+            <input type="text" id="emp-nombre" placeholder="Ej. Daniela / Carlos M."
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-300 mb-1">Puesto / Rol *</label>
+              <select id="emp-puesto" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                <option value="Auxiliar / Mostrador">Auxiliar / Mostrador</option>
+                <option value="Técnico de Reparación">Técnico de Reparación</option>
+                <option value="Encargado de Tienda">Encargado de Tienda</option>
+                <option value="Aprendiz / Capacitación">Aprendiz / Capacitación</option>
+                <option value="Administrador">Administrador</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Sucursal Asignada *</label>
+              <select id="emp-sucursal" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-300 mb-1">Teléfono / WhatsApp</label>
+              <input type="tel" id="emp-telefono" maxlength="10" placeholder="10 dígitos"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">PIN Personal (4 dígitos)</label>
+              <input type="text" id="emp-pin" inputmode="numeric" maxlength="6" placeholder="Ej. 2468"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono font-bold text-amber-300 focus:outline-none focus:border-amber-500">
+            </div>
+          </div>
+          <div>
+            <label class="block text-slate-300 mb-1">Estatus Laboral</label>
+            <select id="emp-estatus" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+              <option value="Activo">Activo</option>
+              <option value="Baja">Baja (Inactivo)</option>
+            </select>
+          </div>
+          <button type="button" onclick="guardarEmpleadoConfig()" id="btn-guardar-empleado"
+            class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-user-check"></i> Registrar Empleado
+          </button>
+        </div>
+      </div>
+
+      <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div>
+            <h2 class="text-sm font-bold text-white">Plantilla de Empleados y Encargados</h2>
+            <p class="text-xs text-slate-400">Los empleados activos aparecen automáticamente como sugerencia al recibir equipos.</p>
+          </div>
+          <select id="filtro-estatus-empleados" onchange="renderizarListaEmpleadosConfig()"
+            class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white">
+            <option value="TODOS">Todos (Activos y Bajas)</option>
+            <option value="Activo">Solo Activos</option>
+            <option value="Baja">Solo Bajas</option>
+          </select>
+        </div>
+        <div id="lista-empleados-config" class="space-y-2.5"></div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- SUB-PANEL 3: ALTA, BAJA Y EDICIÓN DE TIENDAS ALIADAS                -->
+    <!-- =================================================================== -->
+    <div id="cfg-panel-tiendas" class="hidden grid-cols-1 lg:grid-cols-12 gap-5">
+      <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 h-fit">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h4 id="titulo-form-tienda-admin" class="text-sm font-bold text-sky-400 flex items-center gap-2">
+            <i class="fa-solid fa-store"></i> Dar de Alta Nueva Tienda Aliada
+          </h4>
+          <button type="button" id="btn-cancelar-edicion-tienda" onclick="limpiarFormTiendaAdmin()" class="hidden text-xs text-slate-400 hover:text-white underline">
+            Cancelar edición
+          </button>
+        </div>
+        <input type="hidden" id="admin-tienda-id-edit" value="">
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block text-slate-300 mb-1">Nombre de la Tienda *</label>
+            <input type="text" id="admin-tienda-nombre" placeholder="Ej. Ixmicel 3 / TecnoCentro"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-slate-300 mb-1">Color de Identificación *</label>
+            <select id="admin-tienda-color"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
+              <option value="sky">Azul Cielo (Sky)</option>
+              <option value="purple">Morado (Purple)</option>
+              <option value="amber">Ámbar / Dorado (Amber)</option>
+              <option value="emerald">Verde Esmeralda (Emerald)</option>
+              <option value="rose">Rosa / Carmesí (Rose)</option>
+              <option value="cyan">Cian Eléctrico (Cyan)</option>
+              <option value="indigo">Índigo (Indigo)</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-300 mb-1">WhatsApp (10 dígitos)</label>
+              <input type="tel" id="admin-tienda-wa" maxlength="10" placeholder="Ej. 7721112233"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">PIN Exclusivo *</label>
+              <input type="text" id="admin-tienda-pin" inputmode="numeric" maxlength="8" placeholder="Ej. 1111"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono font-bold text-amber-300 focus:outline-none focus:border-amber-500">
+            </div>
+          </div>
+
+          <button type="button" onclick="guardarTiendaAliada()" id="btn-guardar-tienda-admin"
+            class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> Guardar Tienda Aliada
+          </button>
+        </div>
+      </div>
+
+      <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+        <div class="border-b border-slate-800 pb-3">
+          <h4 class="text-sm font-bold text-white">Tiendas Aliadas Activas y Sucursales</h4>
+          <p class="text-xs text-slate-400">Edita datos, actualiza PINes individuales o da de baja tiendas que ya no operen.</p>
+        </div>
+        <div id="lista-tiendas-admin" class="space-y-2.5"></div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- SUB-PANEL 4: MODIFICACIÓN DE PINES Y SEGURIDAD                      -->
+    <!-- =================================================================== -->
+    <div id="cfg-panel-pines" class="hidden space-y-5">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div class="lg:col-span-5 bg-slate-900 border border-red-500/30 rounded-2xl p-5 shadow-xl space-y-4 h-fit">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-sm font-bold text-red-400 flex items-center gap-2">
+              <i class="fa-solid fa-key"></i> PIN Maestro de Administrador
+            </h3>
+            <button type="button" onclick="cerrarSesionPin24h()"
+              class="text-[11px] bg-slate-800 hover:bg-slate-700 text-amber-300 px-2.5 py-1 rounded-lg border border-slate-700 transition">
+              <i class="fa-solid fa-lock mr-1"></i> Bloquear ahora
+            </button>
+          </div>
+          <p class="text-xs text-slate-400">Controla el acceso total al Dashboard, Cotizador, Cortes y este Panel de Configuración.</p>
+          <div class="space-y-3">
+            <input type="text" id="admin-pin-maestro" inputmode="numeric" maxlength="8" placeholder="PIN Maestro (ej. 1234)"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-base font-mono font-bold text-white text-center tracking-widest focus:outline-none focus:border-red-500">
+            <button type="button" onclick="guardarPinMaestro()"
+              class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-xl text-xs transition">
+              Actualizar PIN Maestro
+            </button>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+          <div class="border-b border-slate-800 pb-3">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-shield-halved text-amber-400"></i> Edición Rápida de PINes por Tienda Aliada
+            </h3>
+            <p class="text-xs text-slate-400">Modifica directamente el PIN de acceso de cada sucursal.</p>
+          </div>
+          <div id="lista-pines-rapidos-tiendas" class="space-y-2.5"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- SUB-PANEL 5: GESTIÓN DE INVENTARIO DE REFACCIONES E INSUMOS         -->
+    <!-- =================================================================== -->
+    <div id="cfg-panel-inventario" class="hidden grid-cols-1 lg:grid-cols-12 gap-5">
+      <div class="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 h-fit">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h3 id="titulo-form-inventario" class="text-sm font-bold text-purple-400 flex items-center gap-2">
+            <i class="fa-solid fa-box-open"></i> Agregar Producto / Refacción
+          </h3>
+          <button type="button" id="btn-cancelar-edit-inv" onclick="limpiarFormInventario()" class="hidden text-xs text-slate-400 hover:text-white underline">
+            Cancelar
+          </button>
+        </div>
+        <input type="hidden" id="inv-id-edit" value="">
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block text-slate-300 mb-1">Nombre / Modelo de Refacción *</label>
+            <input type="text" id="inv-nombre" placeholder="Ej. Pantalla Samsung A14 Incell"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500">
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-slate-300 mb-1">Categoría</label>
+              <select id="inv-categoria" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+                <option value="Pantallas">Pantallas</option>
+                <option value="Centros de Carga">Centros de Carga</option>
+                <option value="Baterías">Baterías</option>
+                <option value="Flex / Componentes">Flex / Componentes</option>
+                <option value="Hidrogel / Accesorios">Hidrogel / Accesorios</option>
+                <option value="Insumos Taller">Insumos Taller</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">SKU / Código</label>
+              <input type="text" id="inv-sku" placeholder="Ej. PANT-A14"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-white">
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-slate-300 mb-1">Stock *</label>
+              <input type="number" id="inv-stock" min="0" value="1"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-2 text-sm font-bold text-white">
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Mínimo</label>
+              <input type="number" id="inv-minimo" min="0" value="1"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-2 text-sm text-amber-300">
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Costo ($ MXN)</label>
+              <input type="number" id="inv-costo" min="0" value="0"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-2 text-sm font-bold text-emerald-400">
+            </div>
+          </div>
+          <div>
+            <label class="block text-slate-300 mb-1">Precio Venta Sugerido ($ MXN)</label>
+            <input type="number" id="inv-precio" min="0" value="0"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-sky-300">
+          </div>
+          <button type="button" onclick="guardarItemInventario()" id="btn-guardar-inv"
+            class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> Guardar en Inventario
+          </button>
+        </div>
+      </div>
+
+      <div class="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="text-sm font-bold text-white">Existencias y Costos de Refacciones</h3>
+            <p class="text-xs text-slate-400">Ajusta cantidades rápidas (+ / -), edita costos o elimina artículos agotados.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="text" id="buscador-inventario-cfg" oninput="renderizarInventarioConfig()" placeholder="Buscar pieza o SKU..."
+              class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white w-48 focus:outline-none focus:border-purple-500">
+            <span id="inv-valor-total-badge" class="text-xs font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30 px-2.5 py-1.5 rounded-xl">
+              Valor: $0 MXN
+            </span>
+          </div>
+        </div>
+        <div class="overflow-x-auto rounded-xl border border-slate-800">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-950 text-slate-400 uppercase text-[11px] border-b border-slate-800">
+              <tr>
+                <th class="p-3">Refacción / SKU</th>
+                <th class="p-3">Categoría</th>
+                <th class="p-3 text-center">Existencia</th>
+                <th class="p-3 text-right">Costo</th>
+                <th class="p-3 text-right">Venta</th>
+                <th class="p-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-inventario-config" class="divide-y divide-slate-800/80 bg-slate-900/60"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- SUB-PANEL 6: MODIFICACIÓN DE NOMBRES Y ETIQUETAS DE CAMPOS          -->
+    <!-- =================================================================== -->
+    <div id="cfg-panel-nombres" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="text-sm font-bold text-cyan-400 flex items-center gap-2">
+            <i class="fa-solid fa-tags"></i> Personalizar Nombres y Etiquetas de Campos
+          </h3>
+          <p class="text-xs text-slate-400">Edita los nombres visibles en Recepción, Cotizador y Formularios sin afectar el funcionamiento interno.</p>
+        </div>
+        <div class="flex gap-2">
+          <button type="button" onclick="restaurarEtiquetasDefault()"
+            class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+            <i class="fa-solid fa-rotate-left mr-1"></i> Restaurar Originales
+          </button>
+          <button type="button" onclick="guardarEtiquetasPersonalizadas()"
+            class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-4 rounded-xl text-xs transition flex items-center gap-1.5">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar Todos los Nombres
+          </button>
+        </div>
+      </div>
+
+      <div id="lista-campos-editables" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs"></div>
+    </div>
+
+  </section>
+
+  <script src="js/01-config-y-estado.js"></script>
+  <script src="js/02-seguridad-y-tiendas.js"></script>
+  <script src="js/03-lector-qr-y-patron.js"></script>
+  <script src="js/04-cotizador-presupuestos.js"></script>
+  <script src="js/05-navegacion-dashboard-tienda.js"></script>
+  <script src="js/06-recepcion-bandeja-fotos.js"></script>
+  <script src="js/07-tickets-whatsapp-cortes.js"></script>
+  <script src="js/09-panel-configuracion.js"></script>
+  <script src="js/08-app-init.js"></script>
+</body>
+</html>

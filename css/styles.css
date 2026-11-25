@@ -1,0 +1,45 @@
+/* RedOne v3.2 - Estilos Personalizados */
+@media print {
+      body * { visibility: hidden; }
+      #area-impresion, #area-impresion *, #area-impresion-reporte, #area-impresion-reporte * { visibility: visible; }
+      #area-impresion {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 4px;
+        box-shadow: none !important;
+        border: none !important;
+        background: white !important;
+        color: black !important;
+      }
+      #area-impresion-reporte.imprimiendo-reporte {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 12px;
+        box-shadow: none !important;
+        border: none !important;
+        background: white !important;
+        color: black !important;
+      }
+      .no-print { display: none !important; }
+    }
+    .ticket-58 { width: 240px; font-size: 11px; }
+    .ticket-80 { width: 310px; font-size: 12px; }
+    .etiqueta-trasera { width: 235px; font-size: 11px; }
+    .logo-redone-font {
+      font-family: 'Arial Black', Impact, system-ui, sans-serif;
+      font-style: italic;
+      letter-spacing: -0.05em;
+    }
+    @keyframes scanline {
+      0%, 100% { top: 12%; }
+      50% { top: 84%; }
+    }
+    .animate-scanline {
+      animation: scanline 2.2s ease-in-out infinite;
+    }

@@ -72,6 +72,9 @@ if (!inventarioTaller || !Array.isArray(inventarioTaller)) {
 // ETIQUETAS / NOMBRES DE CAMPOS EDITABLES EN LOCALSTORAGE
 // =========================================================================
 const ETIQUETAS_DEFAULT = {
+  rolTecnico: 'Técnico',
+  rolEmpleado: 'Empleado',
+  rolTienda: 'Tienda',
   origen: 'Origen del Equipo',
   folioTienda: 'Folio de la Tienda *',
   encargadoTienda: 'Encargado / Empleado que recibió *',
@@ -108,6 +111,13 @@ let etiquetasPersonalizadas = {
   ...(JSON.parse(localStorage.getItem('redone_etiquetas_campos_v3_1')) || {})
 };
 
+function obtenerNombreRol(rol) {
+  if (rol === 'tecnico') return etiquetasPersonalizadas.rolTecnico || ETIQUETAS_DEFAULT.rolTecnico;
+  if (rol === 'empleado') return etiquetasPersonalizadas.rolEmpleado || ETIQUETAS_DEFAULT.rolEmpleado;
+  if (rol === 'tienda') return etiquetasPersonalizadas.rolTienda || ETIQUETAS_DEFAULT.rolTienda;
+  return rol || '';
+}
+
 function aplicarEtiquetasPersonalizadas() {
   document.querySelectorAll('[data-campo-label]').forEach(el => {
     const claveCampo = el.getAttribute('data-campo-label');
@@ -115,6 +125,37 @@ function aplicarEtiquetasPersonalizadas() {
       el.textContent = etiquetasPersonalizadas[claveCampo];
     }
   });
+
+  const nomTec = obtenerNombreRol('tecnico');
+  const nomEmp = obtenerNombreRol('empleado');
+  const nomTie = obtenerNombreRol('tienda');
+
+  const spanBtnTec = document.querySelector('#btn-rol-tecnico span');
+  if (spanBtnTec) spanBtnTec.textContent = nomTec;
+
+  const spanBtnEmp = document.querySelector('#btn-rol-empleado span');
+  if (spanBtnEmp) spanBtnEmp.textContent = nomEmp;
+
+  const spanBtnTie = document.querySelector('#btn-rol-tienda span');
+  if (spanBtnTie) spanBtnTie.textContent = nomTie;
+
+  const btnPinTie = document.getElementById('btn-pin-ir-tienda');
+  if (btnPinTie) btnPinTie.innerHTML = `<i class="fa-solid fa-store text-sky-400"></i> Soy ${nomTie}`;
+
+  const btnPinEmp = document.getElementById('btn-pin-ir-empleado');
+  if (btnPinEmp) btnPinEmp.innerHTML = `<i class="fa-solid fa-user-check text-emerald-400"></i> Soy ${nomEmp}`;
+
+  const badgeRol = document.getElementById('badge-rol');
+  if (badgeRol && typeof rolActual !== 'undefined') {
+    if (rolActual === 'tecnico') {
+      badgeRol.textContent = `Vista ${nomTec}`;
+    } else if (rolActual === 'empleado') {
+      const empNom = window.empleadoAutenticadoActual?.nombre || nomEmp;
+      badgeRol.textContent = `${nomEmp}: ${empNom}`;
+    } else if (rolActual === 'tienda') {
+      badgeRol.textContent = `Vista ${nomTie}`;
+    }
+  }
 }
 
 function renderizarCamposEtiquetasEnPanel() {

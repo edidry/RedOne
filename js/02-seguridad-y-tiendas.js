@@ -2,8 +2,8 @@
 // MÓDULO 02: AUTENTICACIÓN POR PIN (24H) Y ADMINISTRACIÓN DE TIENDAS
 // =========================================================================
 
-function abrirModalPin({ modo = 'tecnico', tiendaDestino = null, folioQRPendiente = null, alIniciar = false } = {}) {
-  contextoPinPendiente = { modo, tiendaDestino, folioQRPendiente, alIniciar };
+function abrirModalPin({ modo = 'tecnico', tiendaDestino = null, empleadoDestino = null, folioQRPendiente = null, alIniciar = false } = {}) {
+  contextoPinPendiente = { modo, tiendaDestino, empleadoDestino, folioQRPendiente, alIniciar };
 
   const modal = document.getElementById('modal-pin');
   const titulo = document.getElementById('pin-titulo');
@@ -41,6 +41,27 @@ function abrirModalPin({ modo = 'tecnico', tiendaDestino = null, folioQRPendient
       btnIrTienda.classList.add('hidden');
       btnCancelar.classList.remove('hidden');
     }
+  } else if (modo === 'empleado') {
+    const activos = (Array.isArray(empleadosConfig) ? empleadosConfig : []).filter(e => e.estatus === 'Activo' && e.pin);
+    iconBox.className = 'w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 flex items-center justify-center mx-auto text-2xl shadow-lg';
+    iconBox.innerHTML = '<i class="fa-solid fa-user-check"></i>';
+    titulo.textContent = 'Acceso Modo Empleado';
+    wrapRecordar.classList.add('hidden');
+    btnConfirmar.className = 'w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-sm shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2';
+
+    if (activos.length === 0) {
+      selectTienda.innerHTML = `<option value="">Sin empleados activos con PIN</option>`;
+    } else {
+      selectTienda.innerHTML = activos.map(e =>
+        `<option value="${e.id}" ${empleadoDestino === e.id ? 'selected' : ''}>${e.nombre} (${e.puesto} · ${e.sucursal})</option>`
+      ).join('');
+    }
+    selectWrap.classList.remove('hidden');
+    actualizarSubtituloPinTienda();
+
+    secAcciones.className = 'grid grid-cols-1 gap-2 pt-1';
+    btnIrTienda.classList.add('hidden');
+    btnCancelar.classList.remove('hidden');
   } else {
     iconBox.className = 'w-14 h-14 rounded-2xl bg-sky-500/20 border border-sky-400/40 text-sky-400 flex items-center justify-center mx-auto text-2xl shadow-lg';
     iconBox.innerHTML = '<i class="fa-solid fa-store"></i>';
@@ -65,6 +86,13 @@ function abrirModalPin({ modo = 'tecnico', tiendaDestino = null, folioQRPendient
 
 function actualizarSubtituloPinTienda() {
   const sel = document.getElementById('pin-select-tienda').value;
+  if (contextoPinPendiente.modo === 'empleado') {
+    const emp = (Array.isArray(empleadosConfig) ? empleadosConfig : []).find(e => e.id === sel);
+    document.getElementById('pin-subtitulo').textContent = emp
+      ? `Ingresa el PIN personal de "${emp.nombre}" para acceder a Recepción y Cotizador.`
+      : 'Selecciona un empleado activo e ingresa su PIN personal.';
+    return;
+  }
   document.getElementById('pin-subtitulo').textContent = `Ingresa el PIN exclusivo de "${sel}" para acceder únicamente a los equipos de esta sucursal.`;
 }
 
@@ -78,6 +106,11 @@ function entrarModoTiendaDesdeLogin() {
   abrirModalPin({ modo: 'tienda', tiendaDestino: primeraTienda, alIniciar: contextoPinPendiente.alIniciar });
 }
 
+function entrarModoEmpleadoDesdeLogin() {
+  const primerEmp = (Array.isArray(empleadosConfig) ? empleadosConfig : []).find(e => e.estatus === 'Activo' && e.pin);
+  abrirModalPin({ modo: 'empleado', empleadoDestino: primerEmp?.id || null, alIniciar: contextoPinPendiente.alIniciar });
+}
+
 function confirmarPinAcceso() {
   const pinIngresado = document.getElementById('input-pin-acceso').value.trim();
   const errEl = document.getElementById('pin-error-msg');
@@ -88,6 +121,7 @@ function confirmarPinAcceso() {
         guardarSesionPin24h();
       }
       contextoPinPendiente.alIniciar = false;
+      window.empleadoAutenticadoActual = null;
       document.getElementById('modal-pin').classList.add('hidden');
       cambiarRol('tecnico');
       if (contextoPinPendiente.folioQRPendiente) {
@@ -100,11 +134,26 @@ function confirmarPinAcceso() {
       errEl.classList.remove('hidden');
       document.getElementById('input-pin-acceso').select();
     }
+  } else if (contextoPinPendiente.modo === 'empleado') {
+    const empId = document.getElementById('pin-select-tienda').value;
+    const emp = (Array.isArray(empleadosConfig) ? empleadosConfig : []).find(e => e.id === empId && e.estatus === 'Activo');
+    if (emp && emp.pin && pinIngresado === String(emp.pin)) {
+      contextoPinPendiente.alIniciar = false;
+      tiendaAutenticadaActual = null;
+      window.empleadoAutenticadoActual = emp;
+      document.getElementById('modal-pin').classList.add('hidden');
+      cambiarRol('empleado', emp.nombre);
+    } else {
+      errEl.textContent = emp ? `PIN incorrecto para ${emp.nombre}.` : 'Selecciona un empleado activo con PIN configurado.';
+      errEl.classList.remove('hidden');
+      document.getElementById('input-pin-acceso').select();
+    }
   } else {
     const tiendaElegida = document.getElementById('pin-select-tienda').value;
     const cfg = obtenerConfigTienda(tiendaElegida);
     if (pinIngresado === String(cfg.pin)) {
       contextoPinPendiente.alIniciar = false;
+      window.empleadoAutenticadoActual = null;
       document.getElementById('modal-pin').classList.add('hidden');
       tiendaAutenticadaActual = cfg.nombre;
       cambiarRol('tienda', cfg.nombre);
@@ -137,6 +186,18 @@ function solicitarCambioATienda(forzarSelector = false) {
     ? tiendaAutenticadaActual
     : (tiendasConfig[0]?.nombre || 'Ixmicel 1');
   abrirModalPin({ modo: 'tienda', tiendaDestino: destino });
+}
+
+function solicitarCambioAEmpleado(forzarSelector = false) {
+  if (rolActual === 'empleado' && !forzarSelector) {
+    cambiarPestana('registro');
+    return;
+  }
+  const activos = (Array.isArray(empleadosConfig) ? empleadosConfig : []).filter(e => e.estatus === 'Activo' && e.pin);
+  const destino = (window.empleadoAutenticadoActual && !forzarSelector)
+    ? window.empleadoAutenticadoActual.id
+    : (activos[0]?.id || null);
+  abrirModalPin({ modo: 'empleado', empleadoDestino: destino });
 }
 
 // =========================================================================

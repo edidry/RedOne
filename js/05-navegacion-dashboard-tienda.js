@@ -9,6 +9,7 @@ function cambiarRol(nuevoRol, nombreTiendaForzada = null) {
   rolActual = nuevoRol;
   const btnTec = document.getElementById('btn-rol-tecnico');
   const btnTie = document.getElementById('btn-rol-tienda');
+  const btnEmp = document.getElementById('btn-rol-empleado');
   const badgeRol = document.getElementById('badge-rol');
   const banner = document.getElementById('banner-modo-tienda');
   const tarjetaCostos = document.getElementById('tarjeta-costos');
@@ -21,10 +22,15 @@ function cambiarRol(nuevoRol, nombreTiendaForzada = null) {
   const tabTiendaEntregar = document.getElementById('tab-tienda-entregar');
   const lblTabRegistro = document.getElementById('lbl-tab-registro');
 
+  const estiloInactivoRol = 'px-3 py-2 rounded-xl text-slate-400 hover:text-white font-semibold transition flex items-center gap-1.5 min-h-[38px]';
+  if (btnTec) btnTec.className = estiloInactivoRol;
+  if (btnTie) btnTie.className = estiloInactivoRol;
+  if (btnEmp) btnEmp.className = estiloInactivoRol;
+
   if (nuevoRol === 'tecnico') {
     tiendaAutenticadaActual = null;
-    btnTec.className = 'px-3 py-2 rounded-xl bg-red-600 text-white font-bold transition flex items-center gap-1.5 min-h-[38px] shadow-md';
-    btnTie.className = 'px-3 py-2 rounded-xl text-slate-400 hover:text-white font-semibold transition flex items-center gap-1.5 min-h-[38px]';
+    window.empleadoAutenticadoActual = null;
+    if (btnTec) btnTec.className = 'px-3 py-2 rounded-xl bg-red-600 text-white font-bold transition flex items-center gap-1.5 min-h-[38px] shadow-md';
     badgeRol.textContent = 'Vista Técnico';
     badgeRol.className = 'text-xs font-medium bg-red-600/20 text-red-400 border border-red-500/30 px-2.5 py-0.5 rounded-full';
     banner.classList.add('hidden');
@@ -43,12 +49,36 @@ function cambiarRol(nuevoRol, nombreTiendaForzada = null) {
 
     prepararNuevaOrden();
     cambiarPestana('dashboard');
+  } else if (nuevoRol === 'empleado') {
+    tiendaAutenticadaActual = null;
+    const emp = window.empleadoAutenticadoActual || null;
+    const nombreEmp = nombreTiendaForzada || (emp ? emp.nombre : 'Empleado');
+
+    if (btnEmp) btnEmp.className = 'px-3 py-2 rounded-xl bg-emerald-600 text-white font-bold transition flex items-center gap-1.5 min-h-[38px] shadow-md';
+    badgeRol.textContent = `Empleado: ${nombreEmp}`;
+    badgeRol.className = 'text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full';
+    banner.classList.add('hidden');
+    tarjetaCostos.classList.remove('hidden');
+
+    tabPresupuestos.classList.remove('hidden');
+    tabDashboard.classList.add('hidden');
+    tabBandeja.classList.add('hidden');
+    tabCortes.classList.add('hidden');
+    if (tabConfiguracion) tabConfiguracion.classList.add('hidden');
+
+    tabTiendaRecibir.classList.add('hidden');
+    tabTiendaEntregar.classList.add('hidden');
+    lblTabRegistro.textContent = 'Recepción';
+    document.getElementById('lbl-tarjeta-origen').textContent = etiquetasPersonalizadas.origen || 'Origen del Equipo';
+
+    prepararNuevaOrden();
+    cambiarPestana('registro');
   } else {
+    window.empleadoAutenticadoActual = null;
     const sucursal = nombreTiendaForzada || tiendaAutenticadaActual || tiendasConfig[0]?.nombre || 'Ixmicel 1';
     tiendaAutenticadaActual = sucursal;
 
-    btnTie.className = 'px-3 py-2 rounded-xl bg-sky-500 text-slate-950 font-bold transition flex items-center gap-1.5 min-h-[38px] shadow-md';
-    btnTec.className = 'px-3 py-2 rounded-xl text-slate-400 hover:text-white font-semibold transition flex items-center gap-1.5 min-h-[38px]';
+    if (btnTie) btnTie.className = 'px-3 py-2 rounded-xl bg-sky-500 text-slate-950 font-bold transition flex items-center gap-1.5 min-h-[38px] shadow-md';
     badgeRol.textContent = 'Vista Tienda';
     badgeRol.className = 'text-xs font-medium bg-sky-500/20 text-sky-400 border border-sky-500/30 px-2.5 py-0.5 rounded-full';
     banner.classList.remove('hidden');
@@ -79,7 +109,12 @@ function cambiarRol(nuevoRol, nombreTiendaForzada = null) {
 let vistaTiendaSubmodo = 'recibir';
 
 function cambiarPestana(pestana) {
-  if (rolActual === 'tienda') {
+  if (rolActual === 'empleado') {
+    const permitidasEmpleado = ['registro', 'presupuestos'];
+    if (!permitidasEmpleado.includes(pestana)) {
+      pestana = 'registro';
+    }
+  } else if (rolActual === 'tienda') {
     const permitidasTienda = ['registro', 'tienda-recibir', 'tienda-entregar'];
     if (!permitidasTienda.includes(pestana)) {
       pestana = 'registro';
@@ -126,7 +161,14 @@ function cambiarPestana(pestana) {
   tabTiendaRecibir.className = 'px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-amber-500/40 font-bold transition flex items-center gap-1.5 min-h-[40px] shadow-sm';
   tabTiendaEntregar.className = 'px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-emerald-500/40 font-bold transition flex items-center gap-1.5 min-h-[40px] shadow-sm';
 
-  if (rolActual === 'tienda') {
+  if (rolActual === 'empleado') {
+    tabDashboard.classList.add('hidden');
+    tabBandeja.classList.add('hidden');
+    tabCortes.classList.add('hidden');
+    if (tabConfiguracion) tabConfiguracion.classList.add('hidden');
+    tabTiendaRecibir.classList.add('hidden');
+    tabTiendaEntregar.classList.add('hidden');
+  } else if (rolActual === 'tienda') {
     tabDashboard.classList.add('hidden');
     tabPresupuestos.classList.add('hidden');
     tabBandeja.classList.add('hidden');

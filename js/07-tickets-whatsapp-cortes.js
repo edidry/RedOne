@@ -193,6 +193,83 @@ function imprimirTicketActual() {
 
 // === ENVÍOS POR WHATSAPP ===
 
+function enviarWhatsApp() {
+    const origen = typeof origenActual !== 'undefined' ? origenActual : 'RedOne';
+    const esTienda = origen !== 'RedOne' && origen !== 'Taller';
+    const cfgTienda = esTienda && typeof obtenerConfigTienda === 'function' ? obtenerConfigTienda(origen) : null;
+
+    const telInput = document.getElementById('telefono')?.value || '';
+    const telCrudo = esTienda ? (cfgTienda?.whatsapp || telInput) : telInput;
+    const tel = limpiarTelefonoWhatsApp(telCrudo);
+
+    if (!tel) {
+        alert(esTienda
+            ? `La tienda "${origen}" no tiene un número de WhatsApp configurado en Panel de Configuración -> Tiendas Aliadas.`
+            : 'Ingresa un número de teléfono válido (10 dígitos) del cliente antes de enviar por WhatsApp.');
+        return;
+    }
+
+    const nombreTaller = (typeof configNegocio !== 'undefined' && configNegocio?.nombre)
+        ? configNegocio.nombre
+        : (typeof configTaller !== 'undefined' && configTaller?.nombre ? configTaller.nombre : 'RedOne');
+
+    const folioInput = document.getElementById('folio-actual')?.textContent?.trim()
+        || document.getElementById('folio')?.value?.trim()
+        || (typeof folioEditandoId !== 'undefined' && folioEditandoId ? folioEditandoId : '')
+        || (typeof obtenerSiguienteFolio === 'function' ? obtenerSiguienteFolio() : 'RN-NUEVO');
+
+    const marca = document.getElementById('marca')?.value?.trim() || '';
+    const modelo = document.getElementById('modelo')?.value?.trim() || '';
+    const equipoTexto = `${marca} ${modelo}`.trim() || 'Equipo';
+
+    const repTipo = typeof tipoReparacionActual !== 'undefined' ? tipoReparacionActual : '';
+    const repManual = document.getElementById('reparacion-manual')?.value?.trim() || '';
+    const fallaInput = document.getElementById('falla')?.value?.trim() || '';
+    const servicioBase = repTipo === 'Otro servicio' ? (repManual || 'Servicio técnico') : repTipo;
+    const fallaTexto = [servicioBase, fallaInput].filter(Boolean).join(' - ') || 'Servicio técnico';
+
+    const pieza = parseFloat(document.getElementById('costo-pieza')?.value) || 0;
+    const mo = parseFloat(document.getElementById('mano-obra')?.value) || 0;
+    const total = pieza + mo;
+    const anticipo = parseFloat(document.getElementById('anticipo')?.value) || 0;
+    const saldo = Math.max(0, total - anticipo);
+
+    const esGarantia50 = document.getElementById('btn-garantia-50')?.classList.contains('bg-amber-500')
+        || document.querySelector('input[name="garantia"]:checked')?.value === '50';
+    const garantiaTexto = esGarantia50
+        ? '50% de garantía (descuento aplicado)'
+        : '100% contra defectos de fábrica (no aplica por golpes ni humedad)';
+
+    const clienteNombre = document.getElementById('cliente')?.value?.trim() || (esTienda ? origen : 'Cliente');
+    const folioTienda = document.getElementById('folio-tienda')?.value?.trim() || 'S/N';
+    const encargado = document.getElementById('encargado-tienda')?.value?.trim()
+        || (window.empleadoAutenticadoActual?.nombre)
+        || 'Mostrador';
+
+    const datosVariables = {
+        cliente: clienteNombre,
+        taller: nombreTaller,
+        tienda: origen,
+        folio: folioInput,
+        folioTienda,
+        encargado,
+        equipo: equipoTexto,
+        falla: fallaTexto,
+        total: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`,
+        anticipo: `$${anticipo.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`,
+        saldo: `$${saldo.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`,
+        garantia: garantiaTexto
+    };
+
+    const clavePlantilla = esTienda ? 'recepcionTienda' : 'recepcionCliente';
+    const msg = typeof renderizarPlantillaWA === 'function'
+        ? renderizarPlantillaWA(clavePlantilla, datosVariables)
+        : `Hola *${clienteNombre}*, registramos tu orden *${folioInput}* en *${nombreTaller}*.`;
+
+    const url = `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+}
+
 function limpiarTelefonoWhatsApp(tel) {
     if (!tel) return '';
     let limpio = String(tel).replace(/\D/g, '');

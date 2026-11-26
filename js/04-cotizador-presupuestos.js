@@ -784,17 +784,23 @@ function construirMensajeWhatsAppPresupuesto() {
   const equipoTexto = `${marca} ${modelo}`.trim() || 'su equipo';
   const esTienda = tipoClienteCot === 'tienda';
   const sucDestino = document.getElementById('cot-sucursal-destino')?.value || 'Tienda Aliada';
+  const nombreTaller = (typeof configNegocio !== 'undefined' && configNegocio?.nombre)
+    ? configNegocio.nombre.toUpperCase()
+    : 'REDONE';
+
   const extrasRes = calcularResumenExtras(
     esTienda ? Math.max(0, 1 - (descuentoTiendaPctActual / 100)) : 1,
     1 - (descuentoClientePct / 100)
   );
 
-  let msg = `*REDONE — PRESUPUESTO DE REPARACIÓN*\n`;
-  if (cliente) msg += `Hola ${cliente}, `;
-  msg += `le compartimos la cotización para *${equipoTexto}*:\n`;
-  if (esTienda) msg += `• Tarifa: *${sucDestino}* (-${descuentoTiendaPctActual}% base)\n`;
-  if (descuentoClientePct > 0) msg += `• Descuento aplicado: *-${descuentoClientePct}%*\n`;
+  const saludoCliente = cliente ? `Hola ${cliente}, ` : '';
 
+  let bloqueDescuentos = '';
+  if (esTienda) bloqueDescuentos += `• Tarifa: *${sucDestino}* (-${descuentoTiendaPctActual}% base)\n`;
+  if (descuentoClientePct > 0) bloqueDescuentos += `• Descuento aplicado: *-${descuentoClientePct}%*\n`;
+  bloqueDescuentos = bloqueDescuentos.trim();
+
+  let bloqueOpciones = '';
   if (catPresupuestoActual === 'celular' && modoReparacionCelular === 'pantalla') {
     const doble = document.getElementById('cot-doble-opcion').checked;
     const totalPrin = document.getElementById('res-total-principal').textContent;
@@ -803,35 +809,52 @@ function construirMensajeWhatsAppPresupuesto() {
     if (doble) {
       const totalInc = document.getElementById('res-total-incell').textContent;
       const antInc = document.getElementById('res-anticipo-incell').textContent;
-      msg += `\n*Opción 1 — Pantalla INCELL:* ${totalInc} (Anticipo: ${antInc})`;
-      msg += `\n*Opción 2 — Pantalla OLED:* ${totalPrin} (Anticipo: ${antPrin})`;
+      bloqueOpciones = `*Opción 1 — Pantalla INCELL:* ${totalInc} (Anticipo: ${antInc})\n*Opción 2 — Pantalla OLED:* ${totalPrin} (Anticipo: ${antPrin})`;
     } else {
-      msg += `\n*Cambio de Pantalla:* ${totalPrin} (Anticipo: ${antPrin})`;
+      bloqueOpciones = `*Cambio de Pantalla:* ${totalPrin} (Anticipo: ${antPrin})`;
     }
   } else {
     const concepto = document.getElementById('lbl-titulo-card-principal').textContent.trim();
     const totalPrin = document.getElementById('res-total-principal').textContent;
     const antPrin = document.getElementById('res-anticipo-principal').textContent;
-    msg += `\n*${concepto}:* ${totalPrin} (Anticipo: ${antPrin})`;
+    bloqueOpciones = `*${concepto}:* ${totalPrin} (Anticipo: ${antPrin})`;
   }
 
+  let bloqueExtras = '';
   if (extrasRes.detalles.length > 0) {
-    msg += `\n\n*Servicios Extras:*`;
+    bloqueExtras = `*Servicios Extras:*`;
     extrasRes.detalles.forEach(d => {
-      msg += `\n- ${d.nombre}: $${d.total.toLocaleString('es-MX')} MXN`;
+      bloqueExtras += `\n- ${d.nombre}: $${d.total.toLocaleString('es-MX')} MXN`;
     });
-    msg += `\n*Total Extras:* $${extrasRes.totalCobrar.toLocaleString('es-MX')} MXN`;
+    bloqueExtras += `\n*Total Extras:* $${extrasRes.totalCobrar.toLocaleString('es-MX')} MXN`;
     const comboPrin = document.getElementById('res-combo-principal').textContent;
-    msg += `\n*Combo Total:* ${comboPrin}`;
+    bloqueExtras += `\n*Combo Total:* ${comboPrin}`;
   }
 
-  msg += `\n\n• *Tiempo estimado:* ${entrega}`;
-  if (descuentoClientePct >= 20) {
-    msg += `\n• *Garantía (50% por descuento):* A partir de este momento, el cliente gozará solo del 50% de garantía en caso de que falle la pieza o servicio (cubre el 50% en reposición; no cubre golpes ni humedad).`;
-  } else {
-    msg += `\n• *Garantía:* 100% contra defectos de fábrica (no cubre golpes ni humedad).`;
+  const garantiaTexto = descuentoClientePct >= 20
+    ? '50% por descuento: A partir de este momento, el cliente gozará solo del 50% de garantía en caso de que falle la pieza o servicio (cubre el 50% en reposición; no cubre golpes ni humedad).'
+    : '100% contra defectos de fábrica (no cubre golpes ni humedad).';
+
+  if (typeof renderizarPlantillaWA === 'function') {
+    const msgRenderizado = renderizarPlantillaWA('cotizacion', {
+      taller: nombreTaller,
+      cliente: cliente || 'Cliente',
+      saludoCliente,
+      equipo: equipoTexto,
+      bloqueDescuentos,
+      bloqueOpciones,
+      bloqueExtras,
+      tiempoEntrega: entrega,
+      garantia: garantiaTexto
+    });
+    return msgRenderizado.replace(/\n{3,}/g, '\n\n').trim();
   }
-  msg += `\n\n¿Desea agendar o confirmar su reparación?`;
+
+  let msg = `*${nombreTaller} — PRESUPUESTO DE REPARACIÓN*\n${saludoCliente}le compartimos la cotización para *${equipoTexto}*:\n`;
+  if (bloqueDescuentos) msg += `${bloqueDescuentos}\n`;
+  msg += `\n${bloqueOpciones}`;
+  if (bloqueExtras) msg += `\n\n${bloqueExtras}`;
+  msg += `\n\n• *Tiempo estimado:* ${entrega}\n• *Garantía:* ${garantiaTexto}\n\n¿Desea agendar o confirmar su reparación?`;
   return msg;
 }
 

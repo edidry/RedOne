@@ -12,10 +12,18 @@ function abrirModalPin({ modo = 'tecnico', tiendaDestino = null, empleadoDestino
   const selectTienda = document.getElementById('pin-select-tienda');
   const wrapRecordar = document.getElementById('wrap-recordar-pin');
   const btnIrTienda = document.getElementById('btn-pin-ir-tienda');
+  const btnIrEmpleado = document.getElementById('btn-pin-ir-empleado');
   const btnCancelar = document.getElementById('btn-pin-cancelar');
   const secAcciones = document.getElementById('pin-acciones-secundarias');
   const iconBox = document.getElementById('pin-icono-box');
   const btnConfirmar = document.getElementById('btn-confirmar-pin');
+
+  const nomTec = typeof obtenerNombreRol === 'function' ? obtenerNombreRol('tecnico') : 'Técnico';
+  const nomEmp = typeof obtenerNombreRol === 'function' ? obtenerNombreRol('empleado') : 'Empleado';
+  const nomTie = typeof obtenerNombreRol === 'function' ? obtenerNombreRol('tienda') : 'Tienda';
+
+  if (btnIrTienda) btnIrTienda.innerHTML = `<i class="fa-solid fa-store text-sky-400"></i> Soy ${nomTie}`;
+  if (btnIrEmpleado) btnIrEmpleado.innerHTML = `<i class="fa-solid fa-user-check text-emerald-400"></i> Soy ${nomEmp}`;
 
   document.getElementById('pin-error-msg').classList.add('hidden');
   const inputPin = document.getElementById('input-pin-acceso');
@@ -24,33 +32,35 @@ function abrirModalPin({ modo = 'tecnico', tiendaDestino = null, empleadoDestino
   if (modo === 'tecnico') {
     iconBox.className = 'w-14 h-14 rounded-2xl bg-red-600/20 border border-red-500/40 text-red-400 flex items-center justify-center mx-auto text-2xl shadow-lg';
     iconBox.innerHTML = '<i class="fa-solid fa-shield-halved"></i>';
-    titulo.textContent = 'Acceso a Vista Técnico';
+    titulo.textContent = `Acceso a Vista ${nomTec}`;
     subtitulo.textContent = folioQRPendiente
-      ? `Ingresa el PIN maestro para abrir la orden ${folioQRPendiente} en modo Técnico.`
+      ? `Ingresa el PIN maestro para abrir la orden ${folioQRPendiente} en modo ${nomTec}.`
       : 'Ingresa el PIN maestro para desbloquear el Dashboard Ejecutivo y control de taller.';
     selectWrap.classList.add('hidden');
     wrapRecordar.classList.remove('hidden');
     btnConfirmar.className = 'w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl text-sm shadow-lg shadow-red-600/25 transition flex items-center justify-center gap-2';
 
     if (alIniciar) {
-      secAcciones.className = 'grid grid-cols-1 gap-2 pt-1';
-      btnIrTienda.classList.remove('hidden');
+      secAcciones.className = 'grid grid-cols-2 gap-2 pt-1';
+      if (btnIrTienda) btnIrTienda.classList.remove('hidden');
+      if (btnIrEmpleado) btnIrEmpleado.classList.remove('hidden');
       btnCancelar.classList.add('hidden');
     } else {
       secAcciones.className = 'grid grid-cols-1 gap-2 pt-1';
-      btnIrTienda.classList.add('hidden');
+      if (btnIrTienda) btnIrTienda.classList.add('hidden');
+      if (btnIrEmpleado) btnIrEmpleado.classList.add('hidden');
       btnCancelar.classList.remove('hidden');
     }
   } else if (modo === 'empleado') {
     const activos = (Array.isArray(empleadosConfig) ? empleadosConfig : []).filter(e => e.estatus === 'Activo' && e.pin);
     iconBox.className = 'w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 flex items-center justify-center mx-auto text-2xl shadow-lg';
     iconBox.innerHTML = '<i class="fa-solid fa-user-check"></i>';
-    titulo.textContent = 'Acceso Modo Empleado';
+    titulo.textContent = `Acceso Modo ${nomEmp}`;
     wrapRecordar.classList.add('hidden');
     btnConfirmar.className = 'w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-sm shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2';
 
     if (activos.length === 0) {
-      selectTienda.innerHTML = `<option value="">Sin empleados activos con PIN</option>`;
+      selectTienda.innerHTML = `<option value="">Sin perfiles activos con PIN</option>`;
     } else {
       selectTienda.innerHTML = activos.map(e =>
         `<option value="${e.id}" ${empleadoDestino === e.id ? 'selected' : ''}>${e.nombre} (${e.puesto} · ${e.sucursal})</option>`
@@ -60,12 +70,13 @@ function abrirModalPin({ modo = 'tecnico', tiendaDestino = null, empleadoDestino
     actualizarSubtituloPinTienda();
 
     secAcciones.className = 'grid grid-cols-1 gap-2 pt-1';
-    btnIrTienda.classList.add('hidden');
+    if (btnIrTienda) btnIrTienda.classList.add('hidden');
+    if (btnIrEmpleado) btnIrEmpleado.classList.add('hidden');
     btnCancelar.classList.remove('hidden');
   } else {
     iconBox.className = 'w-14 h-14 rounded-2xl bg-sky-500/20 border border-sky-400/40 text-sky-400 flex items-center justify-center mx-auto text-2xl shadow-lg';
     iconBox.innerHTML = '<i class="fa-solid fa-store"></i>';
-    titulo.textContent = 'Acceso Encargado de Tienda';
+    titulo.textContent = `Acceso Encargado de ${nomTie}`;
     wrapRecordar.classList.add('hidden');
     btnConfirmar.className = 'w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 rounded-xl text-sm shadow-lg shadow-sky-600/25 transition flex items-center justify-center gap-2';
 
@@ -76,7 +87,8 @@ function abrirModalPin({ modo = 'tecnico', tiendaDestino = null, empleadoDestino
     actualizarSubtituloPinTienda();
 
     secAcciones.className = 'grid grid-cols-1 gap-2 pt-1';
-    btnIrTienda.classList.add('hidden');
+    if (btnIrTienda) btnIrTienda.classList.add('hidden');
+    if (btnIrEmpleado) btnIrEmpleado.classList.add('hidden');
     btnCancelar.classList.remove('hidden');
   }
 
@@ -86,11 +98,12 @@ function abrirModalPin({ modo = 'tecnico', tiendaDestino = null, empleadoDestino
 
 function actualizarSubtituloPinTienda() {
   const sel = document.getElementById('pin-select-tienda').value;
+  const nomEmp = typeof obtenerNombreRol === 'function' ? obtenerNombreRol('empleado') : 'Empleado';
   if (contextoPinPendiente.modo === 'empleado') {
     const emp = (Array.isArray(empleadosConfig) ? empleadosConfig : []).find(e => e.id === sel);
     document.getElementById('pin-subtitulo').textContent = emp
       ? `Ingresa el PIN personal de "${emp.nombre}" para acceder a Recepción y Cotizador.`
-      : 'Selecciona un empleado activo e ingresa su PIN personal.';
+      : `Selecciona un perfil de ${nomEmp} activo e ingresa su PIN personal.`;
     return;
   }
   document.getElementById('pin-subtitulo').textContent = `Ingresa el PIN exclusivo de "${sel}" para acceder únicamente a los equipos de esta sucursal.`;

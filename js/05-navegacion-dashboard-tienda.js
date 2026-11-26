@@ -22,6 +22,17 @@ function cambiarRol(nuevoRol, nombreTiendaForzada = null) {
   const tabTiendaEntregar = document.getElementById('tab-tienda-entregar');
   const lblTabRegistro = document.getElementById('lbl-tab-registro');
 
+  const nomTec = typeof obtenerNombreRol === 'function' ? obtenerNombreRol('tecnico') : 'Técnico';
+  const nomEmp = typeof obtenerNombreRol === 'function' ? obtenerNombreRol('empleado') : 'Empleado';
+  const nomTie = typeof obtenerNombreRol === 'function' ? obtenerNombreRol('tienda') : 'Tienda';
+
+  const spanBtnTec = btnTec?.querySelector('span');
+  const spanBtnEmp = btnEmp?.querySelector('span');
+  const spanBtnTie = btnTie?.querySelector('span');
+  if (spanBtnTec) spanBtnTec.textContent = nomTec;
+  if (spanBtnEmp) spanBtnEmp.textContent = nomEmp;
+  if (spanBtnTie) spanBtnTie.textContent = nomTie;
+
   const estiloInactivoRol = 'px-3 py-2 rounded-xl text-slate-400 hover:text-white font-semibold transition flex items-center gap-1.5 min-h-[38px]';
   if (btnTec) btnTec.className = estiloInactivoRol;
   if (btnTie) btnTie.className = estiloInactivoRol;
@@ -31,7 +42,7 @@ function cambiarRol(nuevoRol, nombreTiendaForzada = null) {
     tiendaAutenticadaActual = null;
     window.empleadoAutenticadoActual = null;
     if (btnTec) btnTec.className = 'px-3 py-2 rounded-xl bg-red-600 text-white font-bold transition flex items-center gap-1.5 min-h-[38px] shadow-md';
-    badgeRol.textContent = 'Vista Técnico';
+    badgeRol.textContent = `Vista ${nomTec}`;
     badgeRol.className = 'text-xs font-medium bg-red-600/20 text-red-400 border border-red-500/30 px-2.5 py-0.5 rounded-full';
     banner.classList.add('hidden');
     tarjetaCostos.classList.remove('hidden');
@@ -52,10 +63,10 @@ function cambiarRol(nuevoRol, nombreTiendaForzada = null) {
   } else if (nuevoRol === 'empleado') {
     tiendaAutenticadaActual = null;
     const emp = window.empleadoAutenticadoActual || null;
-    const nombreEmp = nombreTiendaForzada || (emp ? emp.nombre : 'Empleado');
+    const nombreEmp = nombreTiendaForzada || (emp ? emp.nombre : nomEmp);
 
     if (btnEmp) btnEmp.className = 'px-3 py-2 rounded-xl bg-emerald-600 text-white font-bold transition flex items-center gap-1.5 min-h-[38px] shadow-md';
-    badgeRol.textContent = `Empleado: ${nombreEmp}`;
+    badgeRol.textContent = `${nomEmp}: ${nombreEmp}`;
     badgeRol.className = 'text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full';
     banner.classList.add('hidden');
     tarjetaCostos.classList.remove('hidden');
@@ -79,7 +90,7 @@ function cambiarRol(nuevoRol, nombreTiendaForzada = null) {
     tiendaAutenticadaActual = sucursal;
 
     if (btnTie) btnTie.className = 'px-3 py-2 rounded-xl bg-sky-500 text-slate-950 font-bold transition flex items-center gap-1.5 min-h-[38px] shadow-md';
-    badgeRol.textContent = 'Vista Tienda';
+    badgeRol.textContent = `Vista ${nomTie}`;
     badgeRol.className = 'text-xs font-medium bg-sky-500/20 text-sky-400 border border-sky-500/30 px-2.5 py-0.5 rounded-full';
     banner.classList.remove('hidden');
     document.getElementById('banner-nombre-tienda').textContent = sucursal;

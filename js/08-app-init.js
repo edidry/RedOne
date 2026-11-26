@@ -42,4 +42,14 @@ window.addEventListener('DOMContentLoaded', () => {
       abrirModalPin({ modo: 'tecnico', alIniciar: true });
     }
   }
+
+  if (typeof aplicarEtiquetasPersonalizadas === 'function') {
+    aplicarEtiquetasPersonalizadas();
+  }
+});
+
+window.addEventListener('load', () => {
+  if (typeof aplicarEtiquetasPersonalizadas === 'function') {
+    aplicarEtiquetasPersonalizadas();
+  }
 });

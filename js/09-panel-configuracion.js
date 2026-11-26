@@ -7,7 +7,7 @@ let subtabConfigActual = 'general';
 
 function cambiarSubtabConfig(subtab) {
   subtabConfigActual = subtab;
-  const subtabs = ['general', 'empleados', 'tiendas', 'pines', 'inventario', 'nombres'];
+  const subtabs = ['general', 'empleados', 'tiendas', 'pines', 'inventario', 'nombres', 'whatsapp'];
 
   subtabs.forEach(st => {
     const btn = document.getElementById('cfg-tab-' + st);
@@ -39,6 +39,7 @@ function refrescarPanelConfiguracion() {
   renderizarPinesRapidosTiendas();
   renderizarInventarioConfig();
   renderizarCamposEtiquetasEnPanel();
+  cargarPlantillasWhatsAppEnPanel();
 
   const inpMaestro = document.getElementById('admin-pin-maestro');
   if (inpMaestro) inpMaestro.value = pinMaestro;
@@ -455,7 +456,66 @@ function renderizarInventarioConfig() {
 }
 
 // =========================================================================
-// 5. EXPORTAR E IMPORTAR RESPALDO COMPLETO DEL SISTEMA (.JSON)
+// 5. EDITOR DE PLANTILLAS DE MENSAJES DE WHATSAPP
+// =========================================================================
+function cargarPlantillasWhatsAppEnPanel() {
+  if (typeof cargarPlantillasWhatsAppDesdeStorage === 'function') {
+    plantillasWhatsApp = cargarPlantillasWhatsAppDesdeStorage();
+  }
+  const claves = ['recepcionCliente', 'recepcionTienda', 'equipoListo', 'cotizacion'];
+  claves.forEach(clave => {
+    const el = document.getElementById('wa-tpl-' + clave);
+    if (el) {
+      el.value = plantillasWhatsApp[clave] || PLANTILLAS_WA_DEFAULT[clave] || '';
+    }
+  });
+}
+
+function insertarVariableWA(textareaId, variable) {
+  const ta = document.getElementById(textareaId);
+  if (!ta) return;
+  const inicio = ta.selectionStart ?? ta.value.length;
+  const fin = ta.selectionEnd ?? ta.value.length;
+  const textoActual = ta.value;
+  ta.value = textoActual.slice(0, inicio) + variable + textoActual.slice(fin);
+  const nuevaPos = inicio + variable.length;
+  ta.focus();
+  ta.setSelectionRange(nuevaPos, nuevaPos);
+}
+
+function guardarPlantillasWhatsApp() {
+  const claves = ['recepcionCliente', 'recepcionTienda', 'equipoListo', 'cotizacion'];
+  const nuevas = { ...PLANTILLAS_WA_DEFAULT };
+  claves.forEach(clave => {
+    const el = document.getElementById('wa-tpl-' + clave);
+    if (el) {
+      const val = el.value.trim();
+      nuevas[clave] = val || PLANTILLAS_WA_DEFAULT[clave];
+    }
+  });
+  plantillasWhatsApp = nuevas;
+  localStorage.setItem('redone_plantillas_wa_v3', JSON.stringify(plantillasWhatsApp));
+  cargarPlantillasWhatsAppEnPanel();
+  alert('✅ Plantillas de WhatsApp guardadas correctamente.');
+}
+
+function restaurarPlantillaWAIndividual(clave) {
+  if (!PLANTILLAS_WA_DEFAULT[clave]) return;
+  const el = document.getElementById('wa-tpl-' + clave);
+  if (el) el.value = PLANTILLAS_WA_DEFAULT[clave];
+  plantillasWhatsApp[clave] = PLANTILLAS_WA_DEFAULT[clave];
+  localStorage.setItem('redone_plantillas_wa_v3', JSON.stringify(plantillasWhatsApp));
+}
+
+function restaurarPlantillasWhatsAppDefault() {
+  if (!confirm('¿Restaurar las 4 plantillas de WhatsApp a sus mensajes originales?')) return;
+  plantillasWhatsApp = { ...PLANTILLAS_WA_DEFAULT };
+  localStorage.setItem('redone_plantillas_wa_v3', JSON.stringify(plantillasWhatsApp));
+  cargarPlantillasWhatsAppEnPanel();
+}
+
+// =========================================================================
+// 6. EXPORTAR E IMPORTAR RESPALDO COMPLETO DEL SISTEMA (.JSON)
 // =========================================================================
 function exportarRespaldoTotalJSON() {
   const respaldo = {
@@ -468,6 +528,7 @@ function exportarRespaldoTotalJSON() {
     inventarioTaller,
     tarifasTaller,
     etiquetasPersonalizadas,
+    plantillasWhatsApp,
     ordenes
   };
 
@@ -519,6 +580,10 @@ function importarRespaldoTotalJSON(event) {
       if (data.etiquetasPersonalizadas) {
         etiquetasPersonalizadas = { ...ETIQUETAS_DEFAULT, ...data.etiquetasPersonalizadas };
         localStorage.setItem('redone_etiquetas_campos_v3_1', JSON.stringify(etiquetasPersonalizadas));
+      }
+      if (data.plantillasWhatsApp) {
+        plantillasWhatsApp = { ...PLANTILLAS_WA_DEFAULT, ...data.plantillasWhatsApp };
+        localStorage.setItem('redone_plantillas_wa_v3', JSON.stringify(plantillasWhatsApp));
       }
       if (Array.isArray(data.ordenes)) {
         ordenes = data.ordenes;

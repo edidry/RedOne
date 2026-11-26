@@ -106,12 +106,20 @@ const ETIQUETAS_DEFAULT = {
   descuentoCliente: 'Descuento Especial al Cliente (Todas las categorías)'
 };
 
-let etiquetasPersonalizadas = {
-  ...ETIQUETAS_DEFAULT,
-  ...(JSON.parse(localStorage.getItem('redone_etiquetas_campos_v3_1')) || {})
-};
+function cargarEtiquetasDesdeStorage() {
+  try {
+    const raw = localStorage.getItem('redone_etiquetas_campos_v3_1');
+    const parsed = raw ? JSON.parse(raw) : {};
+    return { ...ETIQUETAS_DEFAULT, ...(parsed && typeof parsed === 'object' ? parsed : {}) };
+  } catch (e) {
+    return { ...ETIQUETAS_DEFAULT };
+  }
+}
+
+let etiquetasPersonalizadas = cargarEtiquetasDesdeStorage();
 
 function obtenerNombreRol(rol) {
+  etiquetasPersonalizadas = cargarEtiquetasDesdeStorage();
   if (rol === 'tecnico') return etiquetasPersonalizadas.rolTecnico || ETIQUETAS_DEFAULT.rolTecnico;
   if (rol === 'empleado') return etiquetasPersonalizadas.rolEmpleado || ETIQUETAS_DEFAULT.rolEmpleado;
   if (rol === 'tienda') return etiquetasPersonalizadas.rolTienda || ETIQUETAS_DEFAULT.rolTienda;
@@ -119,6 +127,8 @@ function obtenerNombreRol(rol) {
 }
 
 function aplicarEtiquetasPersonalizadas() {
+  etiquetasPersonalizadas = cargarEtiquetasDesdeStorage();
+
   document.querySelectorAll('[data-campo-label]').forEach(el => {
     const claveCampo = el.getAttribute('data-campo-label');
     if (etiquetasPersonalizadas[claveCampo]) {
@@ -159,6 +169,7 @@ function aplicarEtiquetasPersonalizadas() {
 }
 
 function renderizarCamposEtiquetasEnPanel() {
+  etiquetasPersonalizadas = cargarEtiquetasDesdeStorage();
   const cont = document.getElementById('lista-campos-editables');
   if (!cont) return;
   cont.innerHTML = Object.keys(ETIQUETAS_DEFAULT).map(key => `
@@ -171,11 +182,13 @@ function renderizarCamposEtiquetasEnPanel() {
 }
 
 function guardarEtiquetasPersonalizadas() {
+  const actualizadas = cargarEtiquetasDesdeStorage();
   document.querySelectorAll('[data-edit-etiqueta-key]').forEach(inp => {
     const k = inp.getAttribute('data-edit-etiqueta-key');
     const val = inp.value.trim();
-    etiquetasPersonalizadas[k] = val || ETIQUETAS_DEFAULT[k];
+    actualizadas[k] = val || ETIQUETAS_DEFAULT[k];
   });
+  etiquetasPersonalizadas = actualizadas;
   localStorage.setItem('redone_etiquetas_campos_v3_1', JSON.stringify(etiquetasPersonalizadas));
   aplicarEtiquetasPersonalizadas();
   alert('✅ Nombres y etiquetas actualizados correctamente.');
@@ -186,6 +199,38 @@ function restaurarEtiquetasDefault() {
   localStorage.setItem('redone_etiquetas_campos_v3_1', JSON.stringify(etiquetasPersonalizadas));
   aplicarEtiquetasPersonalizadas();
   renderizarCamposEtiquetasEnPanel();
+}
+
+// =========================================================================
+// PLANTILLAS DE MENSAJES DE WHATSAPP EDITABLES EN LOCALSTORAGE
+// =========================================================================
+const PLANTILLAS_WA_DEFAULT = {
+  recepcionCliente: `Hola *{cliente}*, gracias por confiar en *{taller}* 📲.\n\nRegistramos tu orden de servicio con los siguientes datos:\n• *Folio:* {folio}\n• *Equipo:* {equipo}\n• *Falla reportada:* {falla}\n• *Costo estimado:* {total}\n• *Anticipo:* {anticipo}\n• *Saldo pendiente:* {saldo}\n• *Garantía:* {garantia}\n\nTe avisaremos por este medio en cuanto tu equipo esté listo.`,
+  recepcionTienda: `Hola *{tienda}*, confirmamos recepción en taller *{taller}* 📲:\n• *Folio Taller:* {folio}\n• *Nota Tienda:* {folioTienda}\n• *Recibió:* {encargado}\n• *Equipo:* {equipo}\n• *Falla:* {falla}\n• *Costo Taller:* {total}\n• *Garantía:* {garantia}`,
+  equipoListo: `Hola *{cliente}*, te saludamos de *{taller}* 👋.\n\nTu equipo *{equipo}* (Folio: *{folio}*) ya está *LISTO PARA ENTREGA* ✅.\n• Trabajo: {falla}\n• Total: {total}\n• Anticipo: {anticipo}\n• *Saldo a liquidar: {saldo}*\n\n¡Te esperamos!`,
+  cotizacion: `*{taller} — PRESUPUESTO DE REPARACIÓN*\n{saludoCliente}le compartimos la cotización para *{equipo}*:\n{bloqueDescuentos}\n{bloqueOpciones}\n{bloqueExtras}\n\n• *Tiempo estimado:* {tiempoEntrega}\n• *Garantía:* {garantia}\n\n¿Desea agendar o confirmar su reparación?`
+};
+
+function cargarPlantillasWhatsAppDesdeStorage() {
+  try {
+    const raw = localStorage.getItem('redone_plantillas_wa_v3');
+    const parsed = raw ? JSON.parse(raw) : {};
+    return { ...PLANTILLAS_WA_DEFAULT, ...(parsed && typeof parsed === 'object' ? parsed : {}) };
+  } catch (e) {
+    return { ...PLANTILLAS_WA_DEFAULT };
+  }
+}
+
+let plantillasWhatsApp = cargarPlantillasWhatsAppDesdeStorage();
+
+function renderizarPlantillaWA(clave, datos = {}) {
+  plantillasWhatsApp = cargarPlantillasWhatsAppDesdeStorage();
+  let texto = plantillasWhatsApp[clave] || PLANTILLAS_WA_DEFAULT[clave] || '';
+  Object.keys(datos).forEach(k => {
+    const valor = datos[k] !== undefined && datos[k] !== null ? String(datos[k]) : '';
+    texto = texto.split(`{${k}}`).join(valor);
+  });
+  return texto;
 }
 
 // =========================================================================

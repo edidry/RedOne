@@ -1893,6 +1893,10 @@
         class="cfg-subtab px-3.5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 font-semibold transition flex items-center gap-1.5">
         <i class="fa-solid fa-tags text-cyan-400"></i> Nombres y Etiquetas
       </button>
+      <button type="button" id="cfg-tab-whatsapp" onclick="cambiarSubtabConfig('whatsapp')"
+        class="cfg-subtab px-3.5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 font-semibold transition flex items-center gap-1.5">
+        <i class="fa-brands fa-whatsapp text-emerald-400"></i> Mensajes WhatsApp
+      </button>
     </div>
 
     <!-- =================================================================== -->
@@ -2343,6 +2347,136 @@
       <div id="lista-campos-editables" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs"></div>
     </div>
 
+    <!-- =================================================================== -->
+    <!-- SUB-PANEL 7: PLANTILLAS DE MENSAJES DE WHATSAPP                     -->
+    <!-- =================================================================== -->
+    <div id="cfg-panel-whatsapp" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-5">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="text-sm font-bold text-emerald-400 flex items-center gap-2">
+            <i class="fa-brands fa-whatsapp"></i> Plantillas de Mensajes de WhatsApp
+          </h3>
+          <p class="text-xs text-slate-400">Personaliza los mensajes automáticos de Recepción, Avisos de Entrega y Cotizador usando las variables entre llaves.</p>
+        </div>
+        <div class="flex gap-2">
+          <button type="button" onclick="restaurarPlantillasWhatsAppDefault()"
+            class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+            <i class="fa-solid fa-rotate-left mr-1"></i> Restaurar Todos
+          </button>
+          <button type="button" onclick="guardarPlantillasWhatsApp()"
+            class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-xl text-xs transition flex items-center gap-1.5">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar Plantillas WhatsApp
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
+        <!-- 1. Recepción Cliente Directo -->
+        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-bold text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-user text-red-400"></i> 1. Recepción — Cliente Directo
+            </span>
+            <button type="button" onclick="restaurarPlantillaWAIndividual('recepcionCliente')"
+              class="text-[11px] bg-slate-900 hover:bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 transition">
+              Restaurar mensaje original
+            </button>
+          </div>
+          <div class="flex flex-wrap gap-1">
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionCliente', '{cliente}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-emerald-600/30 text-emerald-300 border border-slate-700 font-mono text-[10px]">{cliente}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionCliente', '{taller}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-emerald-600/30 text-emerald-300 border border-slate-700 font-mono text-[10px]">{taller}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionCliente', '{folio}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-emerald-600/30 text-emerald-300 border border-slate-700 font-mono text-[10px]">{folio}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionCliente', '{equipo}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-emerald-600/30 text-emerald-300 border border-slate-700 font-mono text-[10px]">{equipo}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionCliente', '{falla}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-emerald-600/30 text-emerald-300 border border-slate-700 font-mono text-[10px]">{falla}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionCliente', '{total}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-emerald-600/30 text-emerald-300 border border-slate-700 font-mono text-[10px]">{total}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionCliente', '{anticipo}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-emerald-600/30 text-emerald-300 border border-slate-700 font-mono text-[10px]">{anticipo}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionCliente', '{saldo}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-emerald-600/30 text-emerald-300 border border-slate-700 font-mono text-[10px]">{saldo}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionCliente', '{garantia}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-emerald-600/30 text-emerald-300 border border-slate-700 font-mono text-[10px]">{garantia}</button>
+          </div>
+          <textarea id="wa-tpl-recepcionCliente" rows="7"
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white font-mono leading-relaxed focus:outline-none focus:border-emerald-500"></textarea>
+        </div>
+
+        <!-- 2. Recepción Tienda Aliada -->
+        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-bold text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-store text-sky-400"></i> 2. Recepción — Tienda Aliada
+            </span>
+            <button type="button" onclick="restaurarPlantillaWAIndividual('recepcionTienda')"
+              class="text-[11px] bg-slate-900 hover:bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 transition">
+              Restaurar mensaje original
+            </button>
+          </div>
+          <div class="flex flex-wrap gap-1">
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionTienda', '{tienda}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-sky-600/30 text-sky-300 border border-slate-700 font-mono text-[10px]">{tienda}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionTienda', '{taller}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-sky-600/30 text-sky-300 border border-slate-700 font-mono text-[10px]">{taller}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionTienda', '{folio}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-sky-600/30 text-sky-300 border border-slate-700 font-mono text-[10px]">{folio}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionTienda', '{folioTienda}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-sky-600/30 text-sky-300 border border-slate-700 font-mono text-[10px]">{folioTienda}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionTienda', '{encargado}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-sky-600/30 text-sky-300 border border-slate-700 font-mono text-[10px]">{encargado}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionTienda', '{equipo}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-sky-600/30 text-sky-300 border border-slate-700 font-mono text-[10px]">{equipo}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionTienda', '{falla}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-sky-600/30 text-sky-300 border border-slate-700 font-mono text-[10px]">{falla}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionTienda', '{total}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-sky-600/30 text-sky-300 border border-slate-700 font-mono text-[10px]">{total}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-recepcionTienda', '{garantia}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-sky-600/30 text-sky-300 border border-slate-700 font-mono text-[10px]">{garantia}</button>
+          </div>
+          <textarea id="wa-tpl-recepcionTienda" rows="7"
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white font-mono leading-relaxed focus:outline-none focus:border-sky-500"></textarea>
+        </div>
+
+        <!-- 3. Aviso Equipo Listo para Entrega -->
+        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-bold text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-check text-amber-400"></i> 3. Aviso — Equipo Listo para Entrega
+            </span>
+            <button type="button" onclick="restaurarPlantillaWAIndividual('equipoListo')"
+              class="text-[11px] bg-slate-900 hover:bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 transition">
+              Restaurar mensaje original
+            </button>
+          </div>
+          <div class="flex flex-wrap gap-1">
+            <button type="button" onclick="insertarVariableWA('wa-tpl-equipoListo', '{cliente}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-amber-600/30 text-amber-300 border border-slate-700 font-mono text-[10px]">{cliente}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-equipoListo', '{taller}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-amber-600/30 text-amber-300 border border-slate-700 font-mono text-[10px]">{taller}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-equipoListo', '{folio}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-amber-600/30 text-amber-300 border border-slate-700 font-mono text-[10px]">{folio}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-equipoListo', '{equipo}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-amber-600/30 text-amber-300 border border-slate-700 font-mono text-[10px]">{equipo}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-equipoListo', '{falla}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-amber-600/30 text-amber-300 border border-slate-700 font-mono text-[10px]">{falla}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-equipoListo', '{total}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-amber-600/30 text-amber-300 border border-slate-700 font-mono text-[10px]">{total}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-equipoListo', '{anticipo}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-amber-600/30 text-amber-300 border border-slate-700 font-mono text-[10px]">{anticipo}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-equipoListo', '{saldo}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-amber-600/30 text-amber-300 border border-slate-700 font-mono text-[10px]">{saldo}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-equipoListo', '{tienda}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-amber-600/30 text-amber-300 border border-slate-700 font-mono text-[10px]">{tienda}</button>
+          </div>
+          <textarea id="wa-tpl-equipoListo" rows="7"
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white font-mono leading-relaxed focus:outline-none focus:border-amber-500"></textarea>
+        </div>
+
+        <!-- 4. Presupuestos / Cotizador -->
+        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-bold text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-calculator text-purple-400"></i> 4. Presupuestos / Cotizador
+            </span>
+            <button type="button" onclick="restaurarPlantillaWAIndividual('cotizacion')"
+              class="text-[11px] bg-slate-900 hover:bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 transition">
+              Restaurar mensaje original
+            </button>
+          </div>
+          <div class="flex flex-wrap gap-1">
+            <button type="button" onclick="insertarVariableWA('wa-tpl-cotizacion', '{taller}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-purple-600/30 text-purple-300 border border-slate-700 font-mono text-[10px]">{taller}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-cotizacion', '{cliente}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-purple-600/30 text-purple-300 border border-slate-700 font-mono text-[10px]">{cliente}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-cotizacion', '{saludoCliente}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-purple-600/30 text-purple-300 border border-slate-700 font-mono text-[10px]">{saludoCliente}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-cotizacion', '{equipo}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-purple-600/30 text-purple-300 border border-slate-700 font-mono text-[10px]">{equipo}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-cotizacion', '{bloqueDescuentos}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-purple-600/30 text-purple-300 border border-slate-700 font-mono text-[10px]">{bloqueDescuentos}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-cotizacion', '{bloqueOpciones}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-purple-600/30 text-purple-300 border border-slate-700 font-mono text-[10px]">{bloqueOpciones}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-cotizacion', '{bloqueExtras}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-purple-600/30 text-purple-300 border border-slate-700 font-mono text-[10px]">{bloqueExtras}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-cotizacion', '{tiempoEntrega}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-purple-600/30 text-purple-300 border border-slate-700 font-mono text-[10px]">{tiempoEntrega}</button>
+            <button type="button" onclick="insertarVariableWA('wa-tpl-cotizacion', '{garantia}')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-purple-600/30 text-purple-300 border border-slate-700 font-mono text-[10px]">{garantia}</button>
+          </div>
+          <textarea id="wa-tpl-cotizacion" rows="7"
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white font-mono leading-relaxed focus:outline-none focus:border-purple-500"></textarea>
+        </div>
+      </div>
+    </div>
+
   </section>
 
   <script src="js/01-config-y-estado.js"></script>
@@ -2356,4 +2490,3 @@
   <script src="js/08-app-init.js"></script>
 </body>
 </html>
-

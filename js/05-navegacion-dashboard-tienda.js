@@ -3,7 +3,7 @@
 // =========================================================================
 
 // =========================================================================
-// CAMBIO DE ROL (TÉCNICO vs TIENDA CON PIN INDEPENDIENTE)
+// CAMBIO DE ROL (TÉCNICO vs EMPLEADO vs TIENDA CON PIN INDEPENDIENTE)
 // =========================================================================
 function cambiarRol(nuevoRol, nombreTiendaForzada = null) {
   rolActual = nuevoRol;
@@ -13,6 +13,7 @@ function cambiarRol(nuevoRol, nombreTiendaForzada = null) {
   const badgeRol = document.getElementById('badge-rol');
   const banner = document.getElementById('banner-modo-tienda');
   const tarjetaCostos = document.getElementById('tarjeta-costos');
+
   const tabDashboard = document.getElementById('tab-dashboard');
   const tabPresupuestos = document.getElementById('tab-presupuestos');
   const tabBandeja = document.getElementById('tab-bandeja');
@@ -21,6 +22,13 @@ function cambiarRol(nuevoRol, nombreTiendaForzada = null) {
   const tabTiendaRecibir = document.getElementById('tab-tienda-recibir');
   const tabTiendaEntregar = document.getElementById('tab-tienda-entregar');
   const lblTabRegistro = document.getElementById('lbl-tab-registro');
+
+  const vistaDashboard = document.getElementById('vista-dashboard');
+  const vistaBandeja = document.getElementById('vista-bandeja');
+  const vistaPresupuestos = document.getElementById('vista-presupuestos');
+  const vistaCortes = document.getElementById('vista-cortes');
+  const vistaConfiguracion = document.getElementById('vista-configuracion');
+  const vistaTiendaSeg = document.getElementById('vista-tienda-seguimiento');
 
   const nomTec = typeof obtenerNombreRol === 'function' ? obtenerNombreRol('tecnico') : 'Técnico';
   const nomEmp = typeof obtenerNombreRol === 'function' ? obtenerNombreRol('empleado') : 'Empleado';
@@ -42,21 +50,25 @@ function cambiarRol(nuevoRol, nombreTiendaForzada = null) {
     tiendaAutenticadaActual = null;
     window.empleadoAutenticadoActual = null;
     if (btnTec) btnTec.className = 'px-3 py-2 rounded-xl bg-red-600 text-white font-bold transition flex items-center gap-1.5 min-h-[38px] shadow-md';
-    badgeRol.textContent = `Vista ${nomTec}`;
-    badgeRol.className = 'text-xs font-medium bg-red-600/20 text-red-400 border border-red-500/30 px-2.5 py-0.5 rounded-full';
-    banner.classList.add('hidden');
-    tarjetaCostos.classList.remove('hidden');
+    if (badgeRol) {
+      badgeRol.textContent = `Vista ${nomTec}`;
+      badgeRol.className = 'text-xs font-medium bg-red-600/20 text-red-400 border border-red-500/30 px-2.5 py-0.5 rounded-full';
+    }
+    if (banner) banner.classList.add('hidden');
+    if (tarjetaCostos) tarjetaCostos.classList.remove('hidden');
 
-    tabDashboard.classList.remove('hidden');
-    tabPresupuestos.classList.remove('hidden');
-    tabBandeja.classList.remove('hidden');
-    tabCortes.classList.remove('hidden');
+    if (tabDashboard) tabDashboard.classList.remove('hidden');
+    if (tabPresupuestos) tabPresupuestos.classList.remove('hidden');
+    if (tabBandeja) tabBandeja.classList.remove('hidden');
+    if (tabCortes) tabCortes.classList.remove('hidden');
     if (tabConfiguracion) tabConfiguracion.classList.remove('hidden');
 
-    tabTiendaRecibir.classList.add('hidden');
-    tabTiendaEntregar.classList.add('hidden');
-    lblTabRegistro.textContent = 'Recepción';
-    document.getElementById('lbl-tarjeta-origen').textContent = etiquetasPersonalizadas.origen || 'Origen del Equipo';
+    if (tabTiendaRecibir) tabTiendaRecibir.classList.add('hidden');
+    if (tabTiendaEntregar) tabTiendaEntregar.classList.add('hidden');
+    if (vistaTiendaSeg) vistaTiendaSeg.classList.add('hidden');
+    if (lblTabRegistro) lblTabRegistro.textContent = 'Recepción';
+    const lblOrigen = document.getElementById('lbl-tarjeta-origen');
+    if (lblOrigen) lblOrigen.textContent = etiquetasPersonalizadas.origen || 'Origen del Equipo';
 
     prepararNuevaOrden();
     cambiarPestana('dashboard');
@@ -66,21 +78,30 @@ function cambiarRol(nuevoRol, nombreTiendaForzada = null) {
     const nombreEmp = nombreTiendaForzada || (emp ? emp.nombre : nomEmp);
 
     if (btnEmp) btnEmp.className = 'px-3 py-2 rounded-xl bg-emerald-600 text-white font-bold transition flex items-center gap-1.5 min-h-[38px] shadow-md';
-    badgeRol.textContent = `${nomEmp}: ${nombreEmp}`;
-    badgeRol.className = 'text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full';
-    banner.classList.add('hidden');
-    tarjetaCostos.classList.remove('hidden');
+    if (badgeRol) {
+      badgeRol.textContent = `${nomEmp}: ${nombreEmp}`;
+      badgeRol.className = 'text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full';
+    }
+    if (banner) banner.classList.add('hidden');
+    if (tarjetaCostos) tarjetaCostos.classList.remove('hidden');
 
-    tabPresupuestos.classList.remove('hidden');
-    tabDashboard.classList.add('hidden');
-    tabBandeja.classList.add('hidden');
-    tabCortes.classList.add('hidden');
+    if (tabPresupuestos) tabPresupuestos.classList.remove('hidden');
+    if (tabDashboard) tabDashboard.classList.add('hidden');
+    if (tabBandeja) tabBandeja.classList.add('hidden');
+    if (tabCortes) tabCortes.classList.add('hidden');
     if (tabConfiguracion) tabConfiguracion.classList.add('hidden');
 
-    tabTiendaRecibir.classList.add('hidden');
-    tabTiendaEntregar.classList.add('hidden');
-    lblTabRegistro.textContent = 'Recepción';
-    document.getElementById('lbl-tarjeta-origen').textContent = etiquetasPersonalizadas.origen || 'Origen del Equipo';
+    if (vistaDashboard) vistaDashboard.classList.add('hidden');
+    if (vistaBandeja) vistaBandeja.classList.add('hidden');
+    if (vistaCortes) vistaCortes.classList.add('hidden');
+    if (vistaConfiguracion) vistaConfiguracion.classList.add('hidden');
+    if (vistaTiendaSeg) vistaTiendaSeg.classList.add('hidden');
+
+    if (tabTiendaRecibir) tabTiendaRecibir.classList.add('hidden');
+    if (tabTiendaEntregar) tabTiendaEntregar.classList.add('hidden');
+    if (lblTabRegistro) lblTabRegistro.textContent = 'Recepción';
+    const lblOrigen = document.getElementById('lbl-tarjeta-origen');
+    if (lblOrigen) lblOrigen.textContent = etiquetasPersonalizadas.origen || 'Origen del Equipo';
 
     prepararNuevaOrden();
     cambiarPestana('registro');
@@ -90,22 +111,32 @@ function cambiarRol(nuevoRol, nombreTiendaForzada = null) {
     tiendaAutenticadaActual = sucursal;
 
     if (btnTie) btnTie.className = 'px-3 py-2 rounded-xl bg-sky-500 text-slate-950 font-bold transition flex items-center gap-1.5 min-h-[38px] shadow-md';
-    badgeRol.textContent = `Vista ${nomTie}`;
-    badgeRol.className = 'text-xs font-medium bg-sky-500/20 text-sky-400 border border-sky-500/30 px-2.5 py-0.5 rounded-full';
-    banner.classList.remove('hidden');
-    document.getElementById('banner-nombre-tienda').textContent = sucursal;
-    tarjetaCostos.classList.add('hidden');
+    if (badgeRol) {
+      badgeRol.textContent = `Vista ${nomTie}`;
+      badgeRol.className = 'text-xs font-medium bg-sky-500/20 text-sky-400 border border-sky-500/30 px-2.5 py-0.5 rounded-full';
+    }
+    if (banner) banner.classList.remove('hidden');
+    const bannerNombre = document.getElementById('banner-nombre-tienda');
+    if (bannerNombre) bannerNombre.textContent = sucursal;
+    if (tarjetaCostos) tarjetaCostos.classList.add('hidden');
 
-    tabDashboard.classList.add('hidden');
-    tabPresupuestos.classList.add('hidden');
-    tabBandeja.classList.add('hidden');
-    tabCortes.classList.add('hidden');
+    if (tabDashboard) tabDashboard.classList.add('hidden');
+    if (tabPresupuestos) tabPresupuestos.classList.add('hidden');
+    if (tabBandeja) tabBandeja.classList.add('hidden');
+    if (tabCortes) tabCortes.classList.add('hidden');
     if (tabConfiguracion) tabConfiguracion.classList.add('hidden');
 
-    tabTiendaRecibir.classList.remove('hidden');
-    tabTiendaEntregar.classList.remove('hidden');
-    lblTabRegistro.textContent = 'Registrar Equipo';
-    document.getElementById('lbl-tarjeta-origen').textContent = 'Sucursal Autenticada';
+    if (vistaDashboard) vistaDashboard.classList.add('hidden');
+    if (vistaPresupuestos) vistaPresupuestos.classList.add('hidden');
+    if (vistaBandeja) vistaBandeja.classList.add('hidden');
+    if (vistaCortes) vistaCortes.classList.add('hidden');
+    if (vistaConfiguracion) vistaConfiguracion.classList.add('hidden');
+
+    if (tabTiendaRecibir) tabTiendaRecibir.classList.remove('hidden');
+    if (tabTiendaEntregar) tabTiendaEntregar.classList.remove('hidden');
+    if (lblTabRegistro) lblTabRegistro.textContent = 'Registrar Equipo';
+    const lblOrigen = document.getElementById('lbl-tarjeta-origen');
+    if (lblOrigen) lblOrigen.textContent = 'Sucursal Autenticada';
 
     prepararNuevaOrden();
     seleccionarOrigen(sucursal, true);
@@ -153,58 +184,58 @@ function cambiarPestana(pestana) {
   const tabTiendaRecibir = document.getElementById('tab-tienda-recibir');
   const tabTiendaEntregar = document.getElementById('tab-tienda-entregar');
 
-  vistaDashboard.classList.add('hidden');
-  vistaRegistro.classList.add('hidden');
-  vistaBandeja.classList.add('hidden');
-  vistaPresupuestos.classList.add('hidden');
-  vistaCortes.classList.add('hidden');
+  if (vistaDashboard) vistaDashboard.classList.add('hidden');
+  if (vistaRegistro) vistaRegistro.classList.add('hidden');
+  if (vistaBandeja) vistaBandeja.classList.add('hidden');
+  if (vistaPresupuestos) vistaPresupuestos.classList.add('hidden');
+  if (vistaCortes) vistaCortes.classList.add('hidden');
   if (vistaConfiguracion) vistaConfiguracion.classList.add('hidden');
-  vistaTiendaSeg.classList.add('hidden');
+  if (vistaTiendaSeg) vistaTiendaSeg.classList.add('hidden');
 
-  tabDashboard.className = 'px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold transition flex items-center gap-1.5 min-h-[38px] shadow-sm';
-  tabRegistro.className = 'px-4 py-2.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-white border-2 border-red-500/70 font-extrabold transition flex items-center gap-2 min-h-[42px] shadow-md shadow-red-600/15';
-  tabBandeja.className = 'px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold transition flex items-center gap-1.5 min-h-[38px] shadow-sm';
-  tabPresupuestos.className = 'px-4 py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-white border-2 border-emerald-500/70 font-extrabold transition flex items-center gap-2 min-h-[42px] shadow-md shadow-emerald-600/15';
-  tabCortes.className = 'px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold transition flex items-center gap-1.5 min-h-[38px] shadow-sm';
+  if (tabDashboard) tabDashboard.className = 'px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold transition flex items-center gap-1.5 min-h-[38px] shadow-sm';
+  if (tabRegistro) tabRegistro.className = 'px-4 py-2.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-white border-2 border-red-500/70 font-extrabold transition flex items-center gap-2 min-h-[42px] shadow-md shadow-red-600/15';
+  if (tabBandeja) tabBandeja.className = 'px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold transition flex items-center gap-1.5 min-h-[38px] shadow-sm';
+  if (tabPresupuestos) tabPresupuestos.className = 'px-4 py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-white border-2 border-emerald-500/70 font-extrabold transition flex items-center gap-2 min-h-[42px] shadow-md shadow-emerald-600/15';
+  if (tabCortes) tabCortes.className = 'px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold transition flex items-center gap-1.5 min-h-[38px] shadow-sm';
   if (tabConfiguracion) {
     tabConfiguracion.className = 'px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-300 border border-sky-500/40 font-bold transition flex items-center gap-1.5 min-h-[38px] shadow-sm';
   }
-  tabTiendaRecibir.className = 'px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-amber-500/40 font-bold transition flex items-center gap-1.5 min-h-[40px] shadow-sm';
-  tabTiendaEntregar.className = 'px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-emerald-500/40 font-bold transition flex items-center gap-1.5 min-h-[40px] shadow-sm';
+  if (tabTiendaRecibir) tabTiendaRecibir.className = 'px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-amber-500/40 font-bold transition flex items-center gap-1.5 min-h-[40px] shadow-sm';
+  if (tabTiendaEntregar) tabTiendaEntregar.className = 'px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-emerald-500/40 font-bold transition flex items-center gap-1.5 min-h-[40px] shadow-sm';
 
   if (rolActual === 'empleado') {
-    tabDashboard.classList.add('hidden');
-    tabBandeja.classList.add('hidden');
-    tabCortes.classList.add('hidden');
+    if (tabDashboard) tabDashboard.classList.add('hidden');
+    if (tabBandeja) tabBandeja.classList.add('hidden');
+    if (tabCortes) tabCortes.classList.add('hidden');
     if (tabConfiguracion) tabConfiguracion.classList.add('hidden');
-    tabTiendaRecibir.classList.add('hidden');
-    tabTiendaEntregar.classList.add('hidden');
+    if (tabTiendaRecibir) tabTiendaRecibir.classList.add('hidden');
+    if (tabTiendaEntregar) tabTiendaEntregar.classList.add('hidden');
   } else if (rolActual === 'tienda') {
-    tabDashboard.classList.add('hidden');
-    tabPresupuestos.classList.add('hidden');
-    tabBandeja.classList.add('hidden');
-    tabCortes.classList.add('hidden');
+    if (tabDashboard) tabDashboard.classList.add('hidden');
+    if (tabPresupuestos) tabPresupuestos.classList.add('hidden');
+    if (tabBandeja) tabBandeja.classList.add('hidden');
+    if (tabCortes) tabCortes.classList.add('hidden');
     if (tabConfiguracion) tabConfiguracion.classList.add('hidden');
   } else {
-    tabTiendaRecibir.classList.add('hidden');
-    tabTiendaEntregar.classList.add('hidden');
+    if (tabTiendaRecibir) tabTiendaRecibir.classList.add('hidden');
+    if (tabTiendaEntregar) tabTiendaEntregar.classList.add('hidden');
   }
 
   if (pestana === 'dashboard') {
-    vistaDashboard.classList.remove('hidden');
-    tabDashboard.className = 'px-3 py-2 rounded-xl bg-slate-800 text-white border border-slate-500 font-bold transition flex items-center gap-1.5 min-h-[38px] shadow';
+    if (vistaDashboard) vistaDashboard.classList.remove('hidden');
+    if (tabDashboard) tabDashboard.className = 'px-3 py-2 rounded-xl bg-slate-800 text-white border border-slate-500 font-bold transition flex items-center gap-1.5 min-h-[38px] shadow';
     renderizarDashboard();
   } else if (pestana === 'registro') {
-    vistaRegistro.classList.remove('hidden');
-    tabRegistro.className = 'px-4 py-2.5 rounded-xl bg-red-600 text-white border-2 border-red-400 font-extrabold transition flex items-center gap-2 min-h-[42px] shadow-lg shadow-red-600/35';
+    if (vistaRegistro) vistaRegistro.classList.remove('hidden');
+    if (tabRegistro) tabRegistro.className = 'px-4 py-2.5 rounded-xl bg-red-600 text-white border-2 border-red-400 font-extrabold transition flex items-center gap-2 min-h-[42px] shadow-lg shadow-red-600/35';
     actualizarVista();
   } else if (pestana === 'presupuestos') {
-    vistaPresupuestos.classList.remove('hidden');
-    tabPresupuestos.className = 'px-4 py-2.5 rounded-xl bg-emerald-600 text-white border-2 border-emerald-400 font-extrabold transition flex items-center gap-2 min-h-[42px] shadow-lg shadow-emerald-600/35';
+    if (vistaPresupuestos) vistaPresupuestos.classList.remove('hidden');
+    if (tabPresupuestos) tabPresupuestos.className = 'px-4 py-2.5 rounded-xl bg-emerald-600 text-white border-2 border-emerald-400 font-extrabold transition flex items-center gap-2 min-h-[42px] shadow-lg shadow-emerald-600/35';
     calcularPresupuesto();
   } else if (pestana === 'cortes') {
-    vistaCortes.classList.remove('hidden');
-    tabCortes.className = 'px-3 py-2 rounded-xl bg-sky-600 text-white border border-sky-400 font-bold transition flex items-center gap-1.5 min-h-[38px] shadow';
+    if (vistaCortes) vistaCortes.classList.remove('hidden');
+    if (tabCortes) tabCortes.className = 'px-3 py-2 rounded-xl bg-sky-600 text-white border border-sky-400 font-bold transition flex items-center gap-1.5 min-h-[38px] shadow';
     renderizarVistaCortes();
   } else if (pestana === 'configuracion') {
     if (vistaConfiguracion) vistaConfiguracion.classList.remove('hidden');
@@ -216,17 +247,17 @@ function cambiarPestana(pestana) {
     }
   } else if (pestana === 'tienda-recibir') {
     vistaTiendaSubmodo = 'recibir';
-    vistaTiendaSeg.classList.remove('hidden');
-    tabTiendaRecibir.className = 'px-3.5 py-2 rounded-xl bg-amber-600 text-white border border-amber-400 font-bold transition flex items-center gap-1.5 min-h-[40px] shadow-lg shadow-amber-600/25';
+    if (vistaTiendaSeg) vistaTiendaSeg.classList.remove('hidden');
+    if (tabTiendaRecibir) tabTiendaRecibir.className = 'px-3.5 py-2 rounded-xl bg-amber-600 text-white border border-amber-400 font-bold transition flex items-center gap-1.5 min-h-[40px] shadow-lg shadow-amber-600/25';
     renderizarVistaTienda();
   } else if (pestana === 'tienda-entregar') {
     vistaTiendaSubmodo = 'entregar';
-    vistaTiendaSeg.classList.remove('hidden');
-    tabTiendaEntregar.className = 'px-3.5 py-2 rounded-xl bg-emerald-600 text-white border border-emerald-400 font-bold transition flex items-center gap-1.5 min-h-[40px] shadow-lg shadow-emerald-600/25';
+    if (vistaTiendaSeg) vistaTiendaSeg.classList.remove('hidden');
+    if (tabTiendaEntregar) tabTiendaEntregar.className = 'px-3.5 py-2 rounded-xl bg-emerald-600 text-white border border-emerald-400 font-bold transition flex items-center gap-1.5 min-h-[40px] shadow-lg shadow-emerald-600/25';
     renderizarVistaTienda();
   } else {
-    vistaBandeja.classList.remove('hidden');
-    tabBandeja.className = 'px-3 py-2 rounded-xl bg-slate-800 text-white border border-slate-500 font-bold transition flex items-center gap-1.5 min-h-[38px] shadow';
+    if (vistaBandeja) vistaBandeja.classList.remove('hidden');
+    if (tabBandeja) tabBandeja.className = 'px-3 py-2 rounded-xl bg-slate-800 text-white border border-slate-500 font-bold transition flex items-center gap-1.5 min-h-[38px] shadow';
     renderizarBandeja();
   }
 }

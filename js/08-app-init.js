@@ -27,20 +27,24 @@ window.addEventListener('DOMContentLoaded', () => {
 
   const params = new URLSearchParams(window.location.search);
   const folioUrl = params.get('folio');
+  const mainApp = document.querySelector('main');
+  const headerApp = document.querySelector('header');
 
-  if (folioUrl) {
-    if (tieneSesionPin24hValida()) {
-      cambiarRol('tecnico');
+  if (tieneSesionPin24hValida()) {
+    if (headerApp) headerApp.classList.remove('hidden');
+    if (mainApp) mainApp.classList.remove('hidden');
+    cambiarRol('tecnico');
+    if (folioUrl) {
       cargarOrdenParaEditar(folioUrl, true);
-    } else {
-      abrirModalPin({ modo: 'tecnico', folioQRPendiente: folioUrl, alIniciar: true });
     }
   } else {
-    if (tieneSesionPin24hValida()) {
-      cambiarRol('tecnico');
-    } else {
-      abrirModalPin({ modo: 'tecnico', alIniciar: true });
-    }
+    if (headerApp) headerApp.classList.add('hidden');
+    if (mainApp) mainApp.classList.add('hidden');
+    abrirModalPin({
+      modo: 'tecnico',
+      folioQRPendiente: folioUrl || null,
+      alIniciar: true
+    });
   }
 
   if (typeof aplicarEtiquetasPersonalizadas === 'function') {

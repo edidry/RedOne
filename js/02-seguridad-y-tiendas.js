@@ -2,6 +2,13 @@
 // MÓDULO 02: AUTENTICACIÓN POR PIN (24H) Y ADMINISTRACIÓN DE TIENDAS
 // =========================================================================
 
+function mostrarInterfazDesbloqueada() {
+  const headerApp = document.querySelector('header');
+  const mainApp = document.querySelector('main');
+  if (headerApp) headerApp.classList.remove('hidden');
+  if (mainApp) mainApp.classList.remove('hidden');
+}
+
 function abrirModalPin({ modo = 'tecnico', tiendaDestino = null, empleadoDestino = null, folioQRPendiente = null, alIniciar = false } = {}) {
   contextoPinPendiente = { modo, tiendaDestino, empleadoDestino, folioQRPendiente, alIniciar };
 
@@ -44,12 +51,12 @@ function abrirModalPin({ modo = 'tecnico', tiendaDestino = null, empleadoDestino
       secAcciones.className = 'grid grid-cols-2 gap-2 pt-1';
       if (btnIrTienda) btnIrTienda.classList.remove('hidden');
       if (btnIrEmpleado) btnIrEmpleado.classList.remove('hidden');
-      btnCancelar.classList.add('hidden');
+      if (btnCancelar) btnCancelar.classList.add('hidden');
     } else {
       secAcciones.className = 'grid grid-cols-1 gap-2 pt-1';
       if (btnIrTienda) btnIrTienda.classList.add('hidden');
       if (btnIrEmpleado) btnIrEmpleado.classList.add('hidden');
-      btnCancelar.classList.remove('hidden');
+      if (btnCancelar) btnCancelar.classList.remove('hidden');
     }
   } else if (modo === 'empleado') {
     const activos = (Array.isArray(empleadosConfig) ? empleadosConfig : []).filter(e => e.estatus === 'Activo' && e.pin);
@@ -69,10 +76,27 @@ function abrirModalPin({ modo = 'tecnico', tiendaDestino = null, empleadoDestino
     selectWrap.classList.remove('hidden');
     actualizarSubtituloPinTienda();
 
-    secAcciones.className = 'grid grid-cols-1 gap-2 pt-1';
-    if (btnIrTienda) btnIrTienda.classList.add('hidden');
-    if (btnIrEmpleado) btnIrEmpleado.classList.add('hidden');
-    btnCancelar.classList.remove('hidden');
+    if (alIniciar) {
+      secAcciones.className = 'grid grid-cols-2 gap-2 pt-1';
+      if (btnIrTienda) {
+        btnIrTienda.innerHTML = `<i class="fa-solid fa-store text-sky-400"></i> Soy ${nomTie}`;
+        btnIrTienda.classList.remove('hidden');
+      }
+      if (btnIrEmpleado) {
+        btnIrEmpleado.innerHTML = `<i class="fa-solid fa-shield-halved text-red-400"></i> Soy ${nomTec}`;
+        btnIrEmpleado.onclick = entrarModoTecnicoDesdeLogin;
+        btnIrEmpleado.classList.remove('hidden');
+      }
+      if (btnCancelar) btnCancelar.classList.add('hidden');
+    } else {
+      secAcciones.className = 'grid grid-cols-1 gap-2 pt-1';
+      if (btnIrTienda) btnIrTienda.classList.add('hidden');
+      if (btnIrEmpleado) {
+        btnIrEmpleado.onclick = entrarModoEmpleadoDesdeLogin;
+        btnIrEmpleado.classList.add('hidden');
+      }
+      if (btnCancelar) btnCancelar.classList.remove('hidden');
+    }
   } else {
     iconBox.className = 'w-14 h-14 rounded-2xl bg-sky-500/20 border border-sky-400/40 text-sky-400 flex items-center justify-center mx-auto text-2xl shadow-lg';
     iconBox.innerHTML = '<i class="fa-solid fa-store"></i>';
@@ -86,10 +110,37 @@ function abrirModalPin({ modo = 'tecnico', tiendaDestino = null, empleadoDestino
     selectWrap.classList.remove('hidden');
     actualizarSubtituloPinTienda();
 
-    secAcciones.className = 'grid grid-cols-1 gap-2 pt-1';
-    if (btnIrTienda) btnIrTienda.classList.add('hidden');
-    if (btnIrEmpleado) btnIrEmpleado.classList.add('hidden');
-    btnCancelar.classList.remove('hidden');
+    if (alIniciar) {
+      secAcciones.className = 'grid grid-cols-2 gap-2 pt-1';
+      if (btnIrTienda) {
+        btnIrTienda.innerHTML = `<i class="fa-solid fa-shield-halved text-red-400"></i> Soy ${nomTec}`;
+        btnIrTienda.onclick = entrarModoTecnicoDesdeLogin;
+        btnIrTienda.classList.remove('hidden');
+      }
+      if (btnIrEmpleado) {
+        btnIrEmpleado.innerHTML = `<i class="fa-solid fa-user-check text-emerald-400"></i> Soy ${nomEmp}`;
+        btnIrEmpleado.onclick = entrarModoEmpleadoDesdeLogin;
+        btnIrEmpleado.classList.remove('hidden');
+      }
+      if (btnCancelar) btnCancelar.classList.add('hidden');
+    } else {
+      secAcciones.className = 'grid grid-cols-1 gap-2 pt-1';
+      if (btnIrTienda) {
+        btnIrTienda.onclick = entrarModoTiendaDesdeLogin;
+        btnIrTienda.classList.add('hidden');
+      }
+      if (btnIrEmpleado) {
+        btnIrEmpleado.onclick = entrarModoEmpleadoDesdeLogin;
+        btnIrEmpleado.classList.add('hidden');
+      }
+      if (btnCancelar) btnCancelar.classList.remove('hidden');
+    }
+  }
+
+  // Restaurar handlers originales cuando estamos en modo técnico
+  if (modo === 'tecnico') {
+    if (btnIrTienda) btnIrTienda.onclick = entrarModoTiendaDesdeLogin;
+    if (btnIrEmpleado) btnIrEmpleado.onclick = entrarModoEmpleadoDesdeLogin;
   }
 
   modal.classList.remove('hidden');
@@ -114,6 +165,14 @@ function cerrarModalPin() {
   document.getElementById('modal-pin').classList.add('hidden');
 }
 
+function entrarModoTecnicoDesdeLogin() {
+  abrirModalPin({
+    modo: 'tecnico',
+    folioQRPendiente: contextoPinPendiente.folioQRPendiente || null,
+    alIniciar: contextoPinPendiente.alIniciar
+  });
+}
+
 function entrarModoTiendaDesdeLogin() {
   const primeraTienda = tiendasConfig[0]?.nombre || 'Ixmicel 1';
   abrirModalPin({ modo: 'tienda', tiendaDestino: primeraTienda, alIniciar: contextoPinPendiente.alIniciar });
@@ -136,7 +195,11 @@ function confirmarPinAcceso() {
       contextoPinPendiente.alIniciar = false;
       window.empleadoAutenticadoActual = null;
       document.getElementById('modal-pin').classList.add('hidden');
+      mostrarInterfazDesbloqueada();
       cambiarRol('tecnico');
+      if (typeof aplicarEtiquetasPersonalizadas === 'function') {
+        aplicarEtiquetasPersonalizadas();
+      }
       if (contextoPinPendiente.folioQRPendiente) {
         const folio = contextoPinPendiente.folioQRPendiente;
         contextoPinPendiente.folioQRPendiente = null;
@@ -155,7 +218,12 @@ function confirmarPinAcceso() {
       tiendaAutenticadaActual = null;
       window.empleadoAutenticadoActual = emp;
       document.getElementById('modal-pin').classList.add('hidden');
+      mostrarInterfazDesbloqueada();
       cambiarRol('empleado', emp.nombre);
+      cambiarPestana('registro');
+      if (typeof aplicarEtiquetasPersonalizadas === 'function') {
+        aplicarEtiquetasPersonalizadas();
+      }
     } else {
       errEl.textContent = emp ? `PIN incorrecto para ${emp.nombre}.` : 'Selecciona un empleado activo con PIN configurado.';
       errEl.classList.remove('hidden');
@@ -167,9 +235,14 @@ function confirmarPinAcceso() {
     if (pinIngresado === String(cfg.pin)) {
       contextoPinPendiente.alIniciar = false;
       window.empleadoAutenticadoActual = null;
-      document.getElementById('modal-pin').classList.add('hidden');
       tiendaAutenticadaActual = cfg.nombre;
+      document.getElementById('modal-pin').classList.add('hidden');
+      mostrarInterfazDesbloqueada();
       cambiarRol('tienda', cfg.nombre);
+      cambiarPestana('registro');
+      if (typeof aplicarEtiquetasPersonalizadas === 'function') {
+        aplicarEtiquetasPersonalizadas();
+      }
     } else {
       errEl.textContent = `PIN incorrecto para la tienda ${tiendaElegida}.`;
       errEl.classList.remove('hidden');
@@ -184,6 +257,7 @@ function solicitarCambioATecnico() {
     return;
   }
   if (tieneSesionPin24hValida()) {
+    mostrarInterfazDesbloqueada();
     cambiarRol('tecnico');
   } else {
     abrirModalPin({ modo: 'tecnico' });
@@ -366,7 +440,7 @@ function sincronizarUITiendasDinamicas() {
     tiendasConfig.forEach(t => {
       const paleta = PALETAS_COLOR[t.color] || PALETAS_COLOR.sky;
       htmlBotones += `
-        <button type="button" onclick="seleccionarOrigen('${t.nombre.replace(/'/g, "\'")}')" id="btn-origen-${t.nombre}"
+        <button type="button" onclick="seleccionarOrigen('${t.nombre.replace(/'/g, "\\'")}')" id="btn-origen-${t.nombre}"
           class="origen-btn bg-slate-950 text-slate-300 border border-slate-800 hover:border-slate-600 rounded-xl py-2.5 px-3 text-xs font-semibold transition flex flex-col items-center gap-1">
           <i class="fa-solid fa-store ${paleta.iconText} text-sm"></i>
           <span>${t.nombre}</span>
